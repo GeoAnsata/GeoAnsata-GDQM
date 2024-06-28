@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 # O LITHO E ASSAY SAO MUITO GRANDES AI EU NAO CONSIGO CARREGAR ELES NO SESSION STORAGE
-UPLOAD_FOLDER = 'temp'
+UPLOAD_FOLDER = 'D:/GeoAnsata/AnaliseExploratoria/flask_site/temp'
 SECRET_KEY = 'your_secret_key'
 
 app = Flask(__name__)
@@ -23,8 +23,8 @@ def index():
 
 @app.route('/download_sheet', methods=['GET'])
 def download_sheet():
-    file_name = request.args.get('file_name')
-    selected_sheet = request.args.get('sheet')
+    file_name = session['file_name']
+    selected_sheet = session['selected_sheet']
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
     df = pd.read_excel(file_path, sheet_name=selected_sheet)
     temp_file_path = os.path.join(tempfile.gettempdir(), f"{file_name}_{selected_sheet}.csv")
@@ -36,18 +36,17 @@ def download_sheet():
 #VOU TER QUE MUDAR
 @app.route('/download_csv', methods=['GET'])
 def download_csv():
-    previous_data = session.get('previous_data')
-    file_name=session.get('file_name')
+    file_name=session['file_name']
+    file_path = os.path.join(UPLOAD_FOLDER, file_name)
     
-    if previous_data is None:
-        return render_template('index.html', error='Nenhum dado anterior disponível.')
+    if file_path.endswith('.xlsx'):
+        return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-    # Cria um arquivo temporário para salvar o CSV
-    temp_file_path = os.path.join(tempfile.gettempdir(), 'previous_data.csv')
-    previous_data.to_csv(temp_file_path, index=False)
+    elif file_path.endswith('.csv'):
+        return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
 
-    # Retorna o arquivo CSV como um download
-    return send_file(temp_file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
+
+
 
 
 @app.route('/upload', methods=['POST'])
@@ -61,34 +60,32 @@ def upload():
     else:
         session['file_name']=file.filename
         session['sheet_names']=[]
+        session['selected_sheet']=''
 
     if file:
         
         if file.filename.endswith('.xlsx'):
             file_path = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(file_path)
+
             df = pd.read_excel(file, sheet_name=None)
             session['sheet_names'] = list(df.keys())
-            #if isinstance(df, dict):
-                    #df={key: value.to_dict(orient='records') for key, value in df.items()}
-                    #session['previous_data'] = df
-                    #session['current_data'] = df.copy()
-            #else:  # Se houver apenas uma sheet, df será um DataFrame
-                    #session['previous_data']=df.to_dict(orient='records')
-                    #session['current_data'] = df.copy().to_dict(orient='records')
+            
+
             return render_template('index.html', sheet_names=session['sheet_names'], file_name=session['file_name'])
         
         elif file.filename.endswith('.csv'):
             df = pd.read_csv(file)
             df.sort_index(inplace=True)
-            # Armazenar DataFrame original para referência
-            session['previous_data'] = df.to_dict(orient='records')
-            # Armazenar DataFrame de pré-visualização
-            df_preview = df.copy()
-            session['current_data'] = df_preview.to_dict(orient='records')
+            
+            file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            df.to_csv(file_path,index=False)
+
+            file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+            df.to_csv(file_path,index=False)
 
             column_names = df.columns.tolist()
-            table = df_preview.to_html(classes='table table-striped')
+            table = df.to_html(classes='table table-striped')
             return render_template('index.html', table=table, column_names=column_names)
         else:
             return render_template('index.html', error='Formato de arquivo inválido. Apenas arquivos do Excel (xlsx) e CSV são suportados.')
@@ -98,83 +95,60 @@ def upload():
 @app.route('/show_sheet', methods=['GET'])
 def show_sheet():
     selected_sheet = request.args.get('sheet')
+    print(selected_sheet)
+    if(selected_sheet==None):
+        selected_sheet=session['selected_sheet']
+    print(selected_sheet)
+    session['selected_sheet']=selected_sheet
     file_name=session['file_name']
 
     if file_name:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
         if file_name.endswith('.xlsx'):
             df = pd.read_excel(file_path, sheet_name=selected_sheet)
-            session['previous_data'] = df.to_dict(orient='records')
-            session['current_data'] = df.copy().to_dict(orient='records')
+            df.to_csv(os.path.join(UPLOAD_FOLDER, 'temp.csv'),index=False)
             column_names = df.columns.tolist()  # Lista de colunas
             table = df.to_html(classes='table table-striped')
         else:
             table = None
             column_names = None
 
-    return render_template('index.html', table=table, sheet_names=session['sheet_names'], file_name=file_name, sheet=selected_sheet, column_names=column_names, df=df)
+    return render_template('index.html', table=table, sheet_names=session['sheet_names'], file_name=session['file_name'], sheet=selected_sheet, column_names=column_names, df=df)
 
 
-
-"""     df_allsheets=session['current_data']
-    sheet_names = list(df_allsheets.keys())
-    df=df_allsheets[selected_sheet]
-    column_names = df.columns.tolist()  # Lista de colunas
-    table = df.to_html(classes='table table-striped')
-    return render_template('index.html', table=table, sheet_names=sheet_names, sheet=selected_sheet, column_names=column_names, df=df) """
 
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
 def criar_tabela_continuo_route():
     colunas_selecionadas = request.args.getlist('colunas')
+    selected_sheet = session['selected_sheet']
+    file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    df_selecionado = pd.read_csv(file_path)
 
-    df_selecionado = pd.DataFrame(session['current_data'])
     tabela_continua = criar_tabela_continuo(df_selecionado[colunas_selecionadas])
+
 
     return render_template('tabela_continua.html', tabela_continua=tabela_continua)
 
 
 @app.route('/data_dict', methods=['GET'])
 def criar_data_dict_route():
-    file_name = request.args.get('file_name')
-    selected_sheet = request.args.get('sheet')
     colunas_selecionadas = request.args.getlist('colunas')
-
-    df_selecionado = pd.DataFrame(session['current_data'])
+    selected_sheet = session['selected_sheet']
+    file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    df_selecionado = pd.read_csv(file_path)
     data_dict = criar_data_dict(df_selecionado[colunas_selecionadas])
 
     return render_template('data_dict.html', data_dict=data_dict)
 
 
-@app.route('/plot_graph', methods=['GET'])
-def plot_graph():
-    x_column = request.args.get('x_column')
-    y_column = request.args.get('y_column')
-
-    df = pd.DataFrame(session['current_data'])
-
-    plt.figure()
-    plt.plot(df[x_column], df[y_column])
-    plt.xlabel(x_column)
-    plt.ylabel(y_column)
-    plt.title(f'{y_column} vs {x_column}')
-
-    img = BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-
-    response = make_response(img.read())
-    response.headers.set('Content-Type', 'image/png')
-    response.headers.set('Content-Disposition', 'inline', filename='plot.png')
-
-    return response
-
 
 @app.route('/remove_columns', methods=['POST'])
 def remove_columns():
     columns_to_remove = request.form.getlist('columns_to_remove')
-    print(columns_to_remove)
-    df_preview = pd.DataFrame(session['current_data'])
+    file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    df_preview = pd.read_csv(file_path)
+    print(df_preview)
 
     # Remover colunas selecionadas
     df_preview.drop(columns=columns_to_remove, inplace=True, errors='raise')
@@ -182,7 +156,7 @@ def remove_columns():
     # Reordenar pelo índice das linhas após remoção de colunas
     df_preview.sort_index(inplace=True)
 
-    session['current_data'] = df_preview.to_dict(orient='records')
+    df_preview.to_csv(file_path, index=False)
 
     # Redirecionar para a rota 'show_data' após remoção de colunas
     return redirect(url_for('show_data'))
@@ -192,37 +166,101 @@ def remove_columns():
 def remove_rows():
     start_row = int(request.form.get('start_row'))
     end_row = int(request.form.get('end_row'))
-    df_preview = pd.DataFrame(session['current_data'])
+
+    file_path =os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    df_preview = pd.read_csv(file_path)
+
     if end_row >= len(df_preview):
         end_row = len(df_preview) - 1
     df_preview.drop(df_preview.index[start_row:end_row + 1], inplace=True)
     #ta mudando o index da linha depois de remover, tenho que pensar se quero que seja assim
+
     df_preview.sort_index(inplace=True)
-    session['current_data'] = df_preview.to_dict(orient='records')
+
+    df_preview.to_csv(file_path, index=False)
 
     return redirect(url_for('show_data'))
 
 
 @app.route('/apply_changes', methods=['POST'])
 def apply_changes():
-    session['previous_data'] = session['current_data']
-    return redirect(url_for('show_data'))
+    selected_sheet = session['selected_sheet']
+    preview_file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    file_path=os.path.join(UPLOAD_FOLDER, session['file_name'])
+    df_preview = pd.read_csv(preview_file_path)
+
+
+    if file_path.endswith('.xlsx'):
+        excel_df = pd.read_excel(file_path, sheet_name=None)
+        excel_df[selected_sheet]=df_preview
+        with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+            for sheet_name, df in excel_df.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+        return redirect(url_for('show_sheet'))
+
+    elif file_path.endswith('.csv'):
+        df_preview.to_csv(file_path,index=False)
+        return redirect(url_for('show_data'))
+
 
 
 @app.route('/discard_changes', methods=['POST'])
 def discard_changes():
-    session['current_data'] = session['previous_data']
-    return redirect(url_for('show_data'))
+    selected_sheet = session['selected_sheet']
+    preview_file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    file_path=os.path.join(UPLOAD_FOLDER, session['file_name'])
+    if selected_sheet != '':
+        excel_df = pd.read_excel(file_path, sheet_name=None)
+        excel_df[selected_sheet].to_csv(preview_file_path,index=False)
+        return redirect(url_for('show_sheet'))
+    else:
+        df=pd.read_csv(file_path)
+        df.to_csv(preview_file_path,index=False)
+        return redirect(url_for('show_data'))
 
 
 @app.route('/show_data', methods=['GET'])
 def show_data():
-    df = pd.DataFrame(session['current_data'])
+    preview_file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+    df = pd.read_csv(preview_file_path)
     df.sort_index(inplace=True)
 
     column_names = df.columns.tolist()
 
     return render_template('index.html', table=df.to_html(classes='table table-striped'), column_names=column_names, df=df)
+
+
+
+@app.route('/plot_graph', methods=['GET', 'POST'])
+def plot_graph():
+    if request.method == 'POST':
+        x_column = request.form['x_column']
+        y_column = request.form['y_column']
+
+        file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+        df = pd.read_csv(file_path)
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(df[x_column], df[y_column], marker='o', linestyle='-')
+        plt.title(f'Gráfico de {y_column} vs {x_column}')
+        plt.xlabel(x_column)
+        plt.ylabel(y_column)
+        plt.grid(True)
+        plt.tight_layout()
+
+        img = BytesIO()
+        plt.savefig(img)
+        img.seek(0)
+
+        return send_file(img, mimetype='image/png')
+
+    else:
+        file_path = os.path.join(UPLOAD_FOLDER, 'temp.csv')
+        df = pd.read_csv(file_path)
+        column_names = df.columns.tolist()
+
+        return render_template('plot_graph.html', column_names=column_names)
+
 
 
 
