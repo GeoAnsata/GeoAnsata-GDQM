@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Excel or CSV</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
+
 <body>
     <div class="container mt-5">
         <h2>Upload Excel or CSV</h2>
@@ -28,7 +30,7 @@
                 <label for="sheet">Selecione uma sheet:</label>
                 <select name="sheet" id="sheet" class="form-control">
                     {% for sheet in sheet_names %}
-                    <option value="{{ sheet }}" {% if sheet == selected_sheet %} selected {% endif %}>{{ sheet }}</option>
+                    <option value="{{ sheet }}" {% if sheet==selected_sheet %} selected {% endif %}>{{ sheet }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -38,24 +40,43 @@
         {% endif %}
 
 
-        
-        
+
+
 
         {% if table %}
-        <form action="/criar_tabela_continuo" method="POST" class="mt-3">
+        <form action="/criar_tabela_continuo" method="GET" class="mt-3" id="colunaForm_cont">
             <div class="form-group">
-                <label for="colunas">Selecione as colunas:</label>
-                <select name="colunas[]" id="colunas" class="form-control" multiple>
-                    {% for coluna in column_names %}
-                    <option value="{{ coluna }}">{{ coluna }}</option>
-                    {% endfor %}
-                </select>
+                <label>Selecione as colunas:</label><br>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="colunas" value="{{ coluna }}"
+                        id="cont_{{ coluna }}">
+                    <label class="form-check-label" for="cont_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
             </div>
-
+            <input type="hidden" name="file_name" value="{{ file_name }}">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
             <button type="submit" class="btn btn-primary">Criar Tabela Contínua</button>
         </form>
-        
-        
+
+        <form action="/data_dict" method="GET" class="mt-3" id="colunaForm_dict">
+            <div class="form-group">
+                <label>Selecione as colunas:</label><br>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="colunas" value="{{ coluna }}"
+                        id="dict_{{ coluna }}">
+                    <label class="form-check-label" for="dict_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="file_name" value="{{ file_name }}">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <button type="submit" class="btn btn-primary">Generate Data Dictionary</button>
+        </form>
+
+
         <div class="mt-5">
             <h2>Tabela:</h2>
             {{ table | safe }}
@@ -64,14 +85,35 @@
             <input type="hidden" name="file_name" value="{{ file_name }}">
             <button type="submit" class="btn btn-success">Download Full CSV</button>
         </form>
-            {% if sheet_names %}
-            <form action="/download_sheet" method="GET" class="mt-3">
-                <input type="hidden" name="file_name" value="{{ file_name }}">
-                <input type="hidden" name="sheet" value="{{ sheet }}">
-                <button type="submit" class="btn btn-success">Download Sheet CSV</button>
-            </form>
-            {% endif %}
+        {% if sheet_names %}
+        <form action="/download_sheet" method="GET" class="mt-3">
+            <input type="hidden" name="file_name" value="{{ file_name }}">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <button type="submit" class="btn btn-success">Download Sheet CSV</button>
+        </form>
+        {% endif %}
         {% endif %}
     </div>
+
+
+    <script>
+        document.getElementById('colunaForm_cont').addEventListener('submit', function (event) {
+            var checkboxes = this.querySelectorAll('input[type="checkbox"][name="colunas"]:checked');
+            if (checkboxes.length === 0) {
+                event.preventDefault(); // Prevent form submission if no checkbox is checked
+                alert('Por favor, selecione uma coluna.');
+            }
+        });
+
+        document.getElementById('colunaForm_dict').addEventListener('submit', function (event) {
+            var checkboxes = this.querySelectorAll('input[type="checkbox"][name="colunas"]:checked');
+            if (checkboxes.length === 0) {
+                event.preventDefault(); // Prevent form submission if no checkbox is checked
+                alert('Por favor, selecione uma coluna.');
+            }
+        });
+
+    </script>
 </body>
+
 </html>
