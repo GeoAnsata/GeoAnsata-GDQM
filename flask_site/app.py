@@ -6,6 +6,8 @@ from utils.info_tables import criar_tabela_continuo, criar_data_dict
 from io import BytesIO
 import matplotlib.pyplot as plt
 
+
+# O LITHO E ASSAY SAO MUITO GRANDES AI EU NAO CONSIGO CARREGAR ELES NO SESSION STORAGE
 UPLOAD_FOLDER = 'temp'
 SECRET_KEY = 'your_secret_key'
 
@@ -31,12 +33,21 @@ def download_sheet():
     return send_file(temp_file_path, as_attachment=True, download_name=f"{file_name}_{selected_sheet}.csv", mimetype='text/csv')
 
 
+#VOU TER QUE MUDAR
 @app.route('/download_csv', methods=['GET'])
 def download_csv():
-    file_name = request.args.get('file_name')
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    previous_data = session.get('previous_data')
+    file_name=session.get('file_name')
+    
+    if previous_data is None:
+        return render_template('index.html', error='Nenhum dado anterior disponível.')
 
-    return send_file(file_path, as_attachment=True, mimetype='text/csv')
+    # Cria um arquivo temporário para salvar o CSV
+    temp_file_path = os.path.join(tempfile.gettempdir(), 'previous_data.csv')
+    previous_data.to_csv(temp_file_path, index=False)
+
+    # Retorna o arquivo CSV como um download
+    return send_file(temp_file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
 
 
 @app.route('/upload', methods=['POST'])
@@ -47,27 +58,38 @@ def upload():
     file = request.files['file']
     if file.filename == '':
         return render_template('index.html', error='Nenhum arquivo selecionado!')
+    else:
+        session['file_name']=file.filename
+        session['sheet_names']=[]
 
     if file:
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(file_path)
+        
         if file.filename.endswith('.xlsx'):
-            df = pd.read_excel(file_path, sheet_name=None)
-            sheet_names = list(df.keys())
-            return render_template('index.html', sheet_names=sheet_names, file_name=file.filename)
+            file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(file_path)
+            df = pd.read_excel(file, sheet_name=None)
+            session['sheet_names'] = list(df.keys())
+            #if isinstance(df, dict):
+                    #df={key: value.to_dict(orient='records') for key, value in df.items()}
+                    #session['previous_data'] = df
+                    #session['current_data'] = df.copy()
+            #else:  # Se houver apenas uma sheet, df será um DataFrame
+                    #session['previous_data']=df.to_dict(orient='records')
+                    #session['current_data'] = df.copy().to_dict(orient='records')
+            return render_template('index.html', sheet_names=session['sheet_names'], file_name=session['file_name'])
+        
         elif file.filename.endswith('.csv'):
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(file)
+            df.sort_index(inplace=True)
             # Armazenar DataFrame original para referência
             session['previous_data'] = df.to_dict(orient='records')
-
-            # Armazenar DataFrame de pré-visualização e garantir ordenação pelo índice
+            # Armazenar DataFrame de pré-visualização
             df_preview = df.copy()
-            df_preview.sort_index(inplace=True)
             session['current_data'] = df_preview.to_dict(orient='records')
 
             column_names = df.columns.tolist()
             table = df_preview.to_html(classes='table table-striped')
-            return render_template('index.html', table=table, file_name=file.filename, column_names=column_names)
+            return render_template('index.html', table=table, column_names=column_names)
         else:
             return render_template('index.html', error='Formato de arquivo inválido. Apenas arquivos do Excel (xlsx) e CSV são suportados.')
 
@@ -76,20 +98,30 @@ def upload():
 @app.route('/show_sheet', methods=['GET'])
 def show_sheet():
     selected_sheet = request.args.get('sheet')
-    file_name = request.args.get('file')
+    file_name=session['file_name']
 
     if file_name:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
         if file_name.endswith('.xlsx'):
             df = pd.read_excel(file_path, sheet_name=selected_sheet)
-            sheet_names = list(df.keys())
+            session['previous_data'] = df.to_dict(orient='records')
+            session['current_data'] = df.copy().to_dict(orient='records')
             column_names = df.columns.tolist()  # Lista de colunas
             table = df.to_html(classes='table table-striped')
         else:
             table = None
             column_names = None
 
-    return render_template('index.html', table=table, sheet_names=sheet_names, file_name=file_name, sheet=selected_sheet, column_names=column_names, df=df)
+    return render_template('index.html', table=table, sheet_names=session['sheet_names'], file_name=file_name, sheet=selected_sheet, column_names=column_names, df=df)
+
+
+
+"""     df_allsheets=session['current_data']
+    sheet_names = list(df_allsheets.keys())
+    df=df_allsheets[selected_sheet]
+    column_names = df.columns.tolist()  # Lista de colunas
+    table = df.to_html(classes='table table-striped')
+    return render_template('index.html', table=table, sheet_names=sheet_names, sheet=selected_sheet, column_names=column_names, df=df) """
 
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
@@ -187,9 +219,11 @@ def discard_changes():
 def show_data():
     df = pd.DataFrame(session['current_data'])
     df.sort_index(inplace=True)
+
     column_names = df.columns.tolist()
-    table = df.to_html(classes='table table-striped')
-    return render_template('index.html', table=table, column_names=column_names, df=df)
+
+    return render_template('index.html', table=df.to_html(classes='table table-striped'), column_names=column_names, df=df)
+
 
 
 if __name__ == '__main__':

@@ -35,7 +35,6 @@
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">Mostrar Sheet</button>
-            <input type="hidden" name="file" value="{{ file_name }}">
         </form>
         {% endif %}
 
@@ -51,7 +50,6 @@
                 </div>
                 {% endfor %}
             </div>
-            <input type="hidden" name="file_name" value="{{ file_name }}">
             <input type="hidden" name="sheet" value="{{ sheet }}">
             <button type="submit" class="btn btn-primary">Criar Tabela Contínua</button>
         </form>
@@ -67,7 +65,6 @@
                 </div>
                 {% endfor %}
             </div>
-            <input type="hidden" name="file_name" value="{{ file_name }}">
             <input type="hidden" name="sheet" value="{{ sheet }}">
             <button type="submit" class="btn btn-primary">Generate Data Dictionary</button>
         </form>
@@ -110,12 +107,10 @@
         </div>
 
         <form action="/download_csv" method="GET" class="mt-3">
-            <input type="hidden" name="file_name" value="{{ file_name }}">
             <button type="submit" class="btn btn-success">Download Full CSV</button>
         </form>
         {% if sheet_names %}
         <form action="/download_sheet" method="GET" class="mt-3">
-            <input type="hidden" name="file_name" value="{{ file_name }}">
             <input type="hidden" name="sheet" value="{{ sheet }}">
             <button type="submit" class="btn btn-success">Download Sheet CSV</button>
         </form>
