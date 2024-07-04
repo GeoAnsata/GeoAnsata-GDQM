@@ -2,6 +2,8 @@ import os
 import shutil
 # Function to clear a directory
 def clear_directory(folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
         try:

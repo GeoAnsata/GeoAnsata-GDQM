@@ -39,6 +39,9 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('display') }}">Display</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('download_page') }}">Download</a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -53,11 +56,11 @@
                 <a>{{ file }}</a>
                 <ul>
                     {% for sheet in data_list %}
-                    <li><a href="{{ url_for('select_sheet', filename=file, sheet_name=sheet) }}">{{ sheet }}</a></li>
+                    <li><a href="{{ url_for('select_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a></li>
                     {% endfor %}
                 </ul>
                 {% else %}
-                <a href="{{ url_for('select_file', filename=file) }}">{{ file }}</a>
+                <a href="{{ url_for('select_file', file_name=file) }}">{{ file }}</a>
                 {% endif %}
             </li>
             {% endfor %}

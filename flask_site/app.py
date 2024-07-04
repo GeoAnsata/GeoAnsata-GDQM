@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, session
 from utils.clear_directory import clear_directory
+import tempfile
 import os
 import pandas as pd
 import shutil
@@ -19,10 +20,6 @@ def init_session_vars():
     session['selected_file']=''
     session['selected_sheet']=''
 
-
-@app.route('/')
-def index():
-    return render_template('index.html', uploaded_files=session['sheet_names'])
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -59,7 +56,28 @@ def upload():
     session['sheet_names']=dict_sheet_names
     return redirect(url_for('index'))
 
-@app.route('/show_data', methods=['GET'])
+
+@app.route('/download_sheet/<file_name>/<sheet_name>', methods=['GET'])
+def download_sheet(file_name,sheet_name):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    temp_file_path = os.path.join(tempfile.gettempdir(), f"{file_name}_{sheet_name}.csv")
+    df.to_csv(temp_file_path, index=False)
+
+    return send_file(temp_file_path, as_attachment=True, download_name=f"{file_name}_{sheet_name}.csv", mimetype='text/csv')
+
+
+@app.route('/download_file/<file_name>', methods=['GET'])
+def download_file(file_name):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    
+    if file_path.endswith('.xlsx'):
+        return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    elif file_path.endswith('.csv'):
+        return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
+
+
 def show_data():
     try:
         file_name = session['selected_file']
@@ -69,20 +87,27 @@ def show_data():
             df = pd.read_csv(file_path)
         elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
             selected_sheet=session['selected_sheet']
-            print(file_path)
-            print(selected_sheet)
             df = pd.read_excel(file_path, sheet_name=selected_sheet)
         elif file_name.endswith('.xlsx'):
-            df = pd.read_excel(file_path, sheet_name=None)
+            df = pd.read_excel(file_path, sheet_name=0)
 
         df.sort_index(inplace=True)
         df=df.head(100)
         return render_template('display.html', table=df.to_html(classes='table table-striped'), uploaded_files=session['sheet_names'])
     except:
         return render_template('display.html', table=None, uploaded_files=session['sheet_names'])
+    
+@app.route('/')
+def index():
+    return render_template('index.html', uploaded_files=session['sheet_names'])
+
 @app.route('/display')
 def display():
     return show_data()
+
+@app.route('/download_page')
+def download_page():
+    return render_template('download.html', uploaded_files=session['sheet_names'])
 
 @app.route('/clean_data')
 def clean_data():
@@ -92,15 +117,14 @@ def clean_data():
 def exploratory_analysis():
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'])
 
-@app.route('/select_file/<filename>')
-def select_file(filename):
-    session['selected_file'] = filename
-    print(filename)
+@app.route('/select_file/<file_name>')
+def select_file(file_name):
+    session['selected_file'] = file_name
     return redirect(request.referrer or '/')
 
-@app.route('/select_file/<filename>/<sheet_name>')
-def select_sheet(filename, sheet_name):
-    session['selected_file'] = filename
+@app.route('/select_file/<file_name>/<sheet_name>')
+def select_sheet(file_name, sheet_name):
+    session['selected_file'] = file_name
     session['selected_sheet'] = sheet_name
     return redirect(request.referrer or '/')
 

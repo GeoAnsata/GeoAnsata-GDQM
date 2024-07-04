@@ -3,6 +3,6 @@
 */__pycache__
 */__pycache__/*
 */pycache/*
-flask_site/utils/__pycache__/*
+*/utils/__pycache__/*
 flask_site/utils/__pycache__
-Chat/uploads/*
+*/uploads/*
