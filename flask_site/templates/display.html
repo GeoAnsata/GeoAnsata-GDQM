@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Display{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Display</h2>
+    {% if table %}
+    <div class="mt-5">
+        <h2>Tabela:</h2>
+        {{ table | safe }}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

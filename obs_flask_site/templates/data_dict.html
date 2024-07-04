@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dicionário de Dados</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Dicionário de Dados</h2>
+        
+        {% if data_dict.empty %}
+        <div class="mt-3">
+            <p>Não há dados para exibir.</p>
+        </div>
+        {% else %}
+        <div class="mt-3">
+            <h3>Estatísticas da Tabela:</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Nomes das Colunas</th>
+                        <th>Valores</th>
+                        <th>Contagem</th>
+                        <th>Porcentagem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for index, row in data_dict.iterrows() %}
+                    <tr>
+                        <td>{{ row['Nomes das Colunas'] }}</td>
+                        <td>{{ row['Valores'] }}</td>
+                        <td>{{ row['Contagem'] }}</td>
+                        <td>{{ row['Porcentagem'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

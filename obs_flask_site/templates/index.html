@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Excel or CSV</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h2>Upload Excel or CSV</h2>
+        <form action="/upload" method="POST" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+                <input type="file" class="form-control-file" name="file" accept=".xlsx,.csv">
+            </div>
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if sheet_names %}
+        <form action="/show_sheet" method="GET" class="mt-3">
+            <div class="form-group">
+                <label for="sheet">Selecione uma sheet:</label>
+                <select name="sheet" id="sheet" class="form-control">
+                    {% for sheet in sheet_names %}
+                    <option value="{{ sheet }}" {% if sheet==selected_sheet %} selected {% endif %}>{{ sheet }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Mostrar Sheet</button>
+        </form>
+        {% endif %}
+
+        {% if table %}
+        <form action="/criar_tabela_continuo" method="GET" class="mt-3" id="colunaForm_cont">
+            <div class="form-group">
+                <label>Selecione as colunas:</label><br>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="colunas" value="{{ coluna }}"
+                        id="cont_{{ coluna }}">
+                    <label class="form-check-label" for="cont_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <button type="submit" class="btn btn-primary">Criar Tabela Contínua</button>
+        </form>
+
+        <form action="/data_dict" method="GET" class="mt-3" id="colunaForm_dict">
+            <div class="form-group">
+                <label>Selecione as colunas:</label><br>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="colunas" value="{{ coluna }}"
+                        id="dict_{{ coluna }}">
+                    <label class="form-check-label" for="dict_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <button type="submit" class="btn btn-primary">Generate Data Dictionary</button>
+        </form>
+
+        <form action="/remove_columns" method="POST" class="mt-3" id="removeColumnsForm">
+            <div class="form-group">
+                <label>Selecione as colunas para remover:</label><br>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="columns_to_remove" value="{{ coluna }}"
+                     id="remove_{{ coluna }}">
+                    <label class="form-check-label" for="remove_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-danger">Remover Colunas</button>
+        </form>
+
+        <form action="/remove_rows" method="POST" class="mt-3" id="removeRowsForm">
+            <div class="form-group">
+                <label for="start_row">Início:</label>
+                <input type="number" class="form-control" id="start_row" name="start_row" min="0">
+                <label for="end_row">Fim:</label>
+                <input type="number" class="form-control" id="end_row" name="end_row" min="0">
+            </div>
+            <button type="submit" class="btn btn-danger">Remover Linhas</button>
+        </form>
+
+        <form action="/plot_graph" method="POST" class="mt-3" id="plotGraphForm">
+            <div class="form-group">
+                <label for="x_column">Coluna X:</label>
+                <select class="form-control" id="x_column" name="x_column">
+                    {% for coluna in column_names %}
+                    <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+                <label for="y_column">Coluna Y:</label>
+                <select class="form-control" id="y_column" name="y_column">
+                    {% for coluna in column_names %}
+                    <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Plotar Gráfico</button>
+        </form>
+
+        <form action="/apply_changes" method="POST" class="mt-3">
+            <button type="submit" class="btn btn-success">Aplicar Mudanças</button>
+        </form>
+
+        <form action="/discard_changes" method="POST" class="mt-3">
+            <button type="submit" class="btn btn-warning">Descartar Mudanças</button>
+        </form>
+
+        <div class="mt-5">
+            <h2>Tabela:</h2>
+            {{ table | safe }}
+        </div>
+
+        <form action="/download_csv" method="GET" class="mt-3">
+            <button type="submit" class="btn btn-success">Download Full CSV</button>
+        </form>
+        {% if sheet_names %}
+        <form action="/download_sheet" method="GET" class="mt-3">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <button type="submit" class="btn btn-success">Download Sheet CSV</button>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+    <script>
+        document.getElementById('colunaForm_cont').addEventListener('submit', function (event) {
+            var checkboxes = this.querySelectorAll('input[type="checkbox"][name="colunas"]:checked');
+            if (checkboxes.length === 0) {
+                event.preventDefault(); // Prevent form submission if no checkbox is checked
+                alert('Por favor, selecione uma coluna.');
+            }
+        });
+
+        document.getElementById('colunaForm_dict').addEventListener('submit', function (event) {
+            var checkboxes = this.querySelectorAll('input[type="checkbox"][name="colunas"]:checked');
+            if (checkboxes.length === 0) {
+                event.preventDefault(); // Prevent form submission if no checkbox is checked
+                alert('Por favor, selecione uma coluna.');
+            }
+        });
+
+        document.getElementById('removeRowsForm').addEventListener('submit', function (event) {
+            var startRow = document.getElementById('start_row').value;
+            var endRow = document.getElementById('end_row').value;
+            if (startRow === '' || endRow === '') {
+                event.preventDefault();
+                alert('Por favor, insira um intervalo de linhas válido.');
+            }
+        });
+
+        document.getElementById('removeColumnsForm').addEventListener('submit', function (event) {
+            var checkboxes = this.querySelectorAll('input[type="checkbox"][name="columns_to_remove"]:checked');
+            if (checkboxes.length === 0) {
+                event.preventDefault(); // Evitar o envio do formulário se nenhum checkbox estiver marcado
+                alert('Por favor, selecione uma coluna.');
+            }
+        });
+
+        document.getElementById('plotGraphForm').addEventListener('submit', function (event) {
+            var xColumn = document.getElementById('x_column').value;
+            var yColumn = document.getElementById('y_column').value;
+            
+            if (xColumn === '' || yColumn === '') {
+                event.preventDefault();
+                alert('Por favor, selecione uma coluna para X e Y.');
+            }
+        });
+
+    </script>
+</body>
+
+</html>

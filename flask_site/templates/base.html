@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .sidebar {
+            height: 100vh;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            right: 0; /* Posiciona à direita */
+            background-color: #f8f9fa;
+            padding-top: 20px;
+            overflow-y: auto; /* Adiciona rolagem vertical se necessário */
+        }
+        .main-content {
+            margin-right: 270px; /* Ajusta a margem para acomodar a sidebar à direita */
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Data Processor</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">Upload</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('clean_data') }}">Clean Data</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('exploratory_analysis') }}">Exploratory Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('display') }}">Display</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+
+    <div class="sidebar">
+        <h4>Uploaded Files</h4>
+        <ul class="list-group">
+            {% for file, data_list in uploaded_files.items() %}
+            <li class="list-group-item">
+                {% if data_list|length > 0 %}
+                <a>{{ file }}</a>
+                <ul>
+                    {% for sheet in data_list %}
+                    <li><a href="{{ url_for('select_sheet', filename=file, sheet_name=sheet) }}">{{ sheet }}</a></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <a href="{{ url_for('select_file', filename=file) }}">{{ file }}</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
