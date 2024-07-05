@@ -129,6 +129,4 @@ def select_sheet(file_name, sheet_name):
     return redirect(request.referrer or '/')
 
 if __name__ == '__main__':
-    if not os.path.exists(app.config['UPLOAD_FOLDER']):
-        os.makedirs(app.config['UPLOAD_FOLDER'])
     app.run(debug=True)

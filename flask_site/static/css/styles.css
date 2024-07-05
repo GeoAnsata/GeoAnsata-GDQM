@@ -1,0 +1,39 @@
+.sidebar {
+    height: 100vh;
+    width: 250px;
+    position: fixed;
+    top: 0;
+    right: 0; /* Posiciona à direita */
+    background-color: #f8f9fa;
+    padding-top: 20px;
+    overflow-y: auto; /* Adiciona rolagem vertical se necessário */
+}
+.main-content {
+    margin-right: 270px; /* Ajusta a margem para acomodar a sidebar à direita */
+    padding: 20px;
+}
+.navbar-custom {
+    background-color: #1d265f; /* Cor personalizada da navbar */
+}
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link {
+    color: #ffffff; /* Cor do texto da navbar */
+}
+
+
+.sidebar {
+    /* ... your existing styles ... */
+    background-color: #f5f5f5;  /* Light gray background for sidebar */
+}
+
+.sidebar-title {
+    background-color: #343a40;  /* Blue background for title */
+    color: #ffffff;            /* White text color for title */
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;  /* Make the title clickable to collapse/expand */
+}
+
+.collapse {
+    /* ... default collapse styles from Bootstrap ... */
+}

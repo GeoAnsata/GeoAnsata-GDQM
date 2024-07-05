@@ -4,28 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        .sidebar {
-            height: 100vh;
-            width: 250px;
-            position: fixed;
-            top: 0;
-            right: 0; /* Posiciona à direita */
-            background-color: #f8f9fa;
-            padding-top: 20px;
-            overflow-y: auto; /* Adiciona rolagem vertical se necessário */
-        }
-        .main-content {
-            margin-right: 270px; /* Ajusta a margem para acomodar a sidebar à direita */
-            padding: 20px;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">Data Processor</a>
-        <div class="collapse navbar-collapse">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXB prickly4zTJDa’aLmwIkxw5WOUinetytTlhGFtYhZxjavUPm03SUPoEkGC+pC” crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-hoQjG/xpzPC7eVyVH0JSvjz4u4bKJlwqijlOjBsrtAffw6x+eWV2E/APjWEQ9bjykx” crossorigin="anonymous"></script>
+    <body>
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <a class="navbar-brand" href="#">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 40px;">
+            GDQM
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">Upload</a>
@@ -62,11 +54,10 @@
                 {% else %}
                 <a href="{{ url_for('select_file', file_name=file) }}">{{ file }}</a>
                 {% endif %}
-            </li>
+                </li>
             {% endfor %}
-        </ul>
-    </div>
-
+            </ul>
+        </div>
 
     <div class="main-content">
         {% block content %}{% endblock %}
