@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, session
 from utils.clear_directory import clear_directory
+from utils.info_tables import *
+from utils.load_df import *
 import tempfile
 import os
 import pandas as pd
@@ -80,17 +82,7 @@ def download_file(file_name):
 
 def show_data():
     try:
-        file_name = session['selected_file']
-        dict_sheet_names = session['sheet_names']
-        file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-        if file_name.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-            selected_sheet=session['selected_sheet']
-            df = pd.read_excel(file_path, sheet_name=selected_sheet)
-        elif file_name.endswith('.xlsx'):
-            df = pd.read_excel(file_path, sheet_name=0)
-
+        df =load_df(app)
         df.sort_index(inplace=True)
         df=df.head(100)
         table_html = df.to_html(classes='table table-striped')
@@ -112,22 +104,17 @@ def remove_columns():
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df=load_df(app)
+    df.drop(columns=columns_to_remove, inplace=True, errors='raise')
+    df.sort_index(inplace=True)
+
     if file_name.endswith('.csv'):
-        df = pd.read_csv(file_path)
-        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
-        df.sort_index(inplace=True)
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
-        df = pd.read_excel(file_path, sheet_name=selected_sheet)
-        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
-        df.sort_index(inplace=True)
         with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
             df.to_excel(writer, sheet_name=selected_sheet, index=False)
     elif file_name.endswith('.xlsx'):
-        df = pd.read_excel(file_path, sheet_name=0)
-        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
-        df.sort_index(inplace=True)
         df.to_excel(file_path,index=False)
 
 
@@ -141,33 +128,96 @@ def remove_rows():
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df=load_df(app)
+    if end_row >= len(df):
+        end_row = len(df) - 1
+    df.drop(df.index[start_row:end_row + 1], inplace=True)
+    df.sort_index(inplace=True)
+
     if file_name.endswith('.csv'):
-        df = pd.read_csv(file_path)
-        if end_row >= len(df):
-            end_row = len(df) - 1
-        df.drop(df.index[start_row:end_row + 1], inplace=True)
-        df.sort_index(inplace=True)
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
-        df = pd.read_excel(file_path, sheet_name=selected_sheet)
-        if end_row >= len(df):
-            end_row = len(df) - 1
-        df.drop(df.index[start_row:end_row + 1], inplace=True)
-        df.sort_index(inplace=True)
         with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
             df.to_excel(writer, sheet_name=selected_sheet, index=False)
     elif file_name.endswith('.xlsx'):
-        df = pd.read_excel(file_path, sheet_name=0)
-        if end_row >= len(df):
-            end_row = len(df) - 1
-        df.drop(df.index[start_row:end_row + 1], inplace=True)
-        df.sort_index(inplace=True)
         df.to_excel(file_path,index=False)
 
     return redirect(url_for('clean_data'))
 
+
+
+@app.route('/criar_tabela_continuo', methods=['GET'])
+def criar_tabela_continuo_route():
+    colunas_selecionadas = request.args.getlist('colunas')
+    df = load_df(app)
+    tabela_continua = criar_tabela_continuo(df[colunas_selecionadas])
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+
+    table_html = tabela_continua.to_html(classes='table table-striped')
+
+    # Manually insert <thead> and <tbody>
+    table_html = table_html.replace('<table ', '<table class="table table-striped" ')
+    table_html = table_html.replace('<thead>', '<thead class="thead-light">')
+    table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
+
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html)
+
+
+@app.route('/data_dict', methods=['GET'])
+def criar_data_dict_route():
+    colunas_selecionadas = request.args.getlist('colunas')
+    df = load_df(app)
+    data_dict = criar_data_dict(df[colunas_selecionadas])
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+
+    table_html = data_dict.to_html(classes='table table-striped')
+
+    # Manually insert <thead> and <tbody>
+    table_html = table_html.replace('<table ', '<table class="table table-striped" ')
+    table_html = table_html.replace('<thead>', '<thead class="thead-light">')
+    table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
+
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html)
+
+
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+
+@app.route('/plot_graph', methods=['POST'])
+def plot_graph():
+    x_column = request.form['x_column']
+    y_column = request.form['y_column']
+
+    df = load_df(app)
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(df[x_column], df[y_column], marker='o', linestyle='')
+    plt.title(f'Gráfico de {y_column} vs {x_column}')
+    plt.xlabel(x_column)
+    plt.ylabel(y_column)
+    plt.grid(True)
+    plt.tight_layout()
+
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
+
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64)
+
     
+
+
 @app.route('/')
 def index():
     return render_template('index.html', uploaded_files=session['sheet_names'])
@@ -183,17 +233,7 @@ def download_page():
 @app.route('/clean_data')
 def clean_data():
     try:
-        file_name = session['selected_file']
-        dict_sheet_names = session['sheet_names']
-        file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-        if file_name.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-            selected_sheet=session['selected_sheet']
-            df = pd.read_excel(file_path, sheet_name=selected_sheet)
-        elif file_name.endswith('.xlsx'):
-            df = pd.read_excel(file_path, sheet_name=0)
-
+        df = load_df(app)
         column_names = df.columns.tolist()
         df.sort_index(inplace=True)
         df=df.head(100)
@@ -210,7 +250,11 @@ def clean_data():
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'])
+    df = load_df(app)
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None)
 
 @app.route('/select_file/<file_name>')
 def select_file(file_name):

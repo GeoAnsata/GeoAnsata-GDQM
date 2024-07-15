@@ -71,8 +71,8 @@
 
 /* DOWNLOAD PAGE */
 .download-list {
-  position: fixed; /* Make the list positionable */
-  top: 56px; /* Adjust for navbar height */
+  position: relative; /* Make the list positionable */
+  top: 20px; /* Adjust for navbar height */
   width: 100%; /* Ensure it fills the container */
 }
 

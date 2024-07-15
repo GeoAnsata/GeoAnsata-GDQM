@@ -1,10 +1,85 @@
-{% extends "base.html" %}
-
-{% block title %}Exploratory Analysis{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Exploratory Analysis{% endblock %} {%
+block content %}
 <div class="container mt-5">
-    <h2>Exploratory Analysis</h2>
-    <!-- Adicionar funcionalidades de análise exploratória de dados aqui -->
+  <h2>Exploratory Analysis</h2>
+  {% if column_names %}
+  <form
+    action="/criar_tabela_continuo"
+    method="GET"
+    class="mt-3"
+    id="colunaForm_cont"
+  >
+    <div class="form-group">
+      <label>Selecione as colunas:</label><br />
+      {% for coluna in column_names %}
+      <div class="form-check form-check-inline">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          name="colunas"
+          value="{{ coluna }}"
+          id="cont_{{ coluna }}"
+        />
+        <label class="form-check-label" for="cont_{{ coluna }}"
+          >{{ coluna }}</label
+        >
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">Criar Tabela Contínua</button>
+  </form>
+
+  <form action="/data_dict" method="GET" class="mt-3" id="colunaForm_dict">
+    <div class="form-group">
+      <label>Selecione as colunas:</label><br />
+      {% for coluna in column_names %}
+      <div class="form-check form-check-inline">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          name="colunas"
+          value="{{ coluna }}"
+          id="dict_{{ coluna }}"
+        />
+        <label class="form-check-label" for="dict_{{ coluna }}"
+          >{{ coluna }}</label
+        >
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">
+      Generate Data Dictionary
+    </button>
+  </form>
+
+  {% if table %}
+  <div class="mt-5">
+    <h2>Tabela:</h2>
+    <div class="table-responsive">{{ table | safe }}</div>
+  </div>
+  {% endif %}
+
+  <form action="/plot_graph" method="POST" class="mt-3" id="plotGraphForm">
+    <div class="form-group">
+      <label for="x_column">Coluna X:</label>
+      <select class="form-control" id="x_column" name="x_column">
+        {% for coluna in column_names %}
+        <option value="{{ coluna }}">{{ coluna }}</option>
+        {% endfor %}
+      </select>
+      <label for="y_column">Coluna Y:</label>
+      <select class="form-control" id="y_column" name="y_column">
+        {% for coluna in column_names %}
+        <option value="{{ coluna }}">{{ coluna }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Plotar Gráfico</button>
+  </form>
+  {% if image %}
+  <h3>Generated Plot:</h3>
+  <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
+  {% endif %}
+{% endif %}
 </div>
 {% endblock %}
