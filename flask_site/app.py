@@ -4,7 +4,7 @@ import tempfile
 import os
 import pandas as pd
 import shutil
-
+#TODO fazer com que as tabelas carregadas possam ter o tamanho que o utilizador quiser, atualmente ta 100
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['TEMP_FOLDER'] = 'temp/'
@@ -93,9 +93,80 @@ def show_data():
 
         df.sort_index(inplace=True)
         df=df.head(100)
-        return render_template('display.html', table=df.to_html(classes='table table-striped'), uploaded_files=session['sheet_names'])
+        table_html = df.to_html(classes='table table-striped')
+
+        # Manually insert <thead> and <tbody>
+        table_html = table_html.replace('<table ', '<table class="table table-striped" ')
+        table_html = table_html.replace('<thead>', '<thead class="thead-light">')
+        table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
+
+        return render_template('display.html', table=table_html, uploaded_files=session['sheet_names'])
     except:
         return render_template('display.html', table=None, uploaded_files=session['sheet_names'])
+    
+    
+#é possivel otimizar isso se eu em vez de salvar o excel salvar cada uma das sheets dele e so na hora de aplicar mudanças eu junto elas em um excel
+@app.route('/remove_columns', methods=['POST'])
+def remove_columns():
+    columns_to_remove = request.form.getlist('columns_to_remove')
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    if file_name.endswith('.csv'):
+        df = pd.read_csv(file_path)
+        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
+        df.sort_index(inplace=True)
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        df = pd.read_excel(file_path, sheet_name=selected_sheet)
+        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
+        df.sort_index(inplace=True)
+        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            df.to_excel(writer, sheet_name=selected_sheet, index=False)
+    elif file_name.endswith('.xlsx'):
+        df = pd.read_excel(file_path, sheet_name=0)
+        df.drop(columns=columns_to_remove, inplace=True, errors='raise')
+        df.sort_index(inplace=True)
+        df.to_excel(file_path,index=False)
+
+
+    return redirect(url_for('clean_data'))
+
+
+@app.route('/remove_rows', methods=['POST'])
+def remove_rows():
+    start_row = int(request.form.get('start_row'))
+    end_row = int(request.form.get('end_row'))
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    if file_name.endswith('.csv'):
+        df = pd.read_csv(file_path)
+        if end_row >= len(df):
+            end_row = len(df) - 1
+        df.drop(df.index[start_row:end_row + 1], inplace=True)
+        df.sort_index(inplace=True)
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        df = pd.read_excel(file_path, sheet_name=selected_sheet)
+        if end_row >= len(df):
+            end_row = len(df) - 1
+        df.drop(df.index[start_row:end_row + 1], inplace=True)
+        df.sort_index(inplace=True)
+        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            df.to_excel(writer, sheet_name=selected_sheet, index=False)
+    elif file_name.endswith('.xlsx'):
+        df = pd.read_excel(file_path, sheet_name=0)
+        if end_row >= len(df):
+            end_row = len(df) - 1
+        df.drop(df.index[start_row:end_row + 1], inplace=True)
+        df.sort_index(inplace=True)
+        df.to_excel(file_path,index=False)
+
+    return redirect(url_for('clean_data'))
+
     
 @app.route('/')
 def index():
@@ -111,7 +182,31 @@ def download_page():
 
 @app.route('/clean_data')
 def clean_data():
-    return render_template('clean_data.html', uploaded_files=session['sheet_names'])
+    try:
+        file_name = session['selected_file']
+        dict_sheet_names = session['sheet_names']
+        file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+        if file_name.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+            selected_sheet=session['selected_sheet']
+            df = pd.read_excel(file_path, sheet_name=selected_sheet)
+        elif file_name.endswith('.xlsx'):
+            df = pd.read_excel(file_path, sheet_name=0)
+
+        column_names = df.columns.tolist()
+        df.sort_index(inplace=True)
+        df=df.head(100)
+        table_html = df.to_html(classes='table table-striped')
+
+        # Manually insert <thead> and <tbody>
+        table_html = table_html.replace('<table ', '<table class="table table-striped" ')
+        table_html = table_html.replace('<thead>', '<thead class="thead-light">')
+        table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
+
+        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names)
+    except:
+        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[])
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():

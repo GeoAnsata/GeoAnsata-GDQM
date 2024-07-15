@@ -8,7 +8,9 @@
     {% if table %}
     <div class="mt-5">
         <h2>Tabela:</h2>
-        {{ table | safe }}
+        <div class="table-responsive">
+            {{ table | safe }}
+        </div>
     </div>
     {% endif %}
 </div>

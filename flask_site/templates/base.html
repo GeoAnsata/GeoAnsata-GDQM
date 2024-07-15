@@ -6,11 +6,28 @@
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXB prickly4zTJDa’aLmwIkxw5WOUinetytTlhGFtYhZxjavUPm03SUPoEkGC+pC” crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-hoQjG/xpzPC7eVyVH0JSvjz4u4bKJlwqijlOjBsrtAffw6x+eWV2E/APjWEQ9bjykx” crossorigin="anonymous"></script>
-    <body>
+    <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var sidebar = document.querySelector(".sidebar");
+            var toggleBtn = document.getElementById("toggle-sidebar-btn");
+            var sidebarTitle = document.getElementById("sidebar-title");
+
+            sidebarTitle.addEventListener("click", function() {
+                sidebar.style.display = "none";
+                toggleBtn.style.display = "block";
+            });
+
+            toggleBtn.addEventListener("click", function() {
+                sidebar.style.display = "block";
+                toggleBtn.style.display = "none";
+            });
+        });
+    </script>
+</head>
+<body>
     <nav class="navbar navbar-expand-lg navbar-custom">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 40px;">
             GDQM
         </a>
@@ -38,9 +55,8 @@
         </div>
     </nav>
 
-
     <div class="sidebar">
-        <h4>Uploaded Files</h4>
+        <h4 id="sidebar-title" style="cursor: pointer;">Uploaded Files</h4>
         <ul class="list-group">
             {% for file, data_list in uploaded_files.items() %}
             <li class="list-group-item">
@@ -54,13 +70,20 @@
                 {% else %}
                 <a href="{{ url_for('select_file', file_name=file) }}">{{ file }}</a>
                 {% endif %}
-                </li>
+            </li>
             {% endfor %}
-            </ul>
-        </div>
-
-    <div class="main-content">
-        {% block content %}{% endblock %}
+        </ul>
     </div>
+
+    <button id="toggle-sidebar-btn">
+        <img src="{{ url_for('static', filename='sidebar_logo.png') }}" alt="Toggle Sidebar">
+    </button>
+
+
+    <div class="content-wrapper">
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+      </div>
 </body>
 </html>

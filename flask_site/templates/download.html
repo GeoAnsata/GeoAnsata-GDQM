@@ -4,21 +4,25 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Download</h2>
-    <ul class="list-group">
-        {% for file, data_list in uploaded_files.items() %}
-        <li class="list-group-item">
 
-            <a href="{{ url_for('download_file', file_name=file) }}">{{ file }}</a>
-            {% if data_list|length > 0 %}
-            <ul>
-                {% for sheet in data_list %}
-                <li><a href="{{ url_for('download_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a></li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
+  <h2>Download Files</h2>
+  <ul class="list-group download-list">
+    {% for file, data_list in uploaded_files.items() %}
+      <li class="list-group-item">
+        <a href="{{ url_for('download_file', file_name=file) }}">{{ file }}</a>
+
+        {% if data_list|length > 0 %}
+          <ul class="list-group">
+            {% for sheet in data_list %}
+              <li class="list-group-item">
+                <a href="{{ url_for('download_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
 </div>
 {% endblock %}

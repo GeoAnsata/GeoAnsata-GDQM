@@ -1,39 +1,93 @@
-.sidebar {
-    height: 100vh;
-    width: 250px;
-    position: fixed;
-    top: 0;
-    right: 0; /* Posiciona à direita */
-    background-color: #f8f9fa;
-    padding-top: 20px;
-    overflow-y: auto; /* Adiciona rolagem vertical se necessário */
+.content-wrapper {
+  overflow: auto;
+  height: calc(
+    100vh - 56px
+  ); /* Adjust for navbar height */ /* Or set a fixed height */
 }
+
 .main-content {
-    margin-right: 270px; /* Ajusta a margem para acomodar a sidebar à direita */
-    padding: 20px;
+  position: relative;
+  top: 0px; /* Adjust for navbar height */
+  left: 0;
+  width: 100%;
 }
+
+/* NAVBAR */
 .navbar-custom {
-    background-color: #1d265f; /* Cor personalizada da navbar */
+  background-color: #1d265f; /* Cor personalizada da navbar */
+  height: 56px; /* Added height for alignment */
 }
 .navbar-custom .navbar-brand,
 .navbar-custom .nav-link {
-    color: #ffffff; /* Cor do texto da navbar */
+  color: #f8f9fa; /* Cor do texto da navbar */
 }
 
-
+/* SIDEBAR */
 .sidebar {
-    /* ... your existing styles ... */
-    background-color: #f5f5f5;  /* Light gray background for sidebar */
+  display: block;
+  width: 250px;
+  background-color: #f8f9fa;
+  padding: 15px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 1001;
+  overflow-y: clip;
+}
+.sidebar h4 {
+  background-color: #1d265f; /* Fundo azul */
+  color: #f8f9fa; /* Texto branco */
+  padding: 15px;
+  margin: -15px -15px 10px -15px; /* Ajusta o espaçamento */
+  cursor: pointer;
+  height: 56px; /* Added height for alignment */
+  display: flex;
+  align-items: center; /* Alinha verticalmente o texto */
+}
+.list-group-item {
+    margin: 0px 0; /* Adjust margin as needed */
+  }
+
+
+
+.list-group-item a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#toggle-sidebar-btn {
+  display: none;
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1001;
+  background-color: transparent;
+  border: none;
+}
+#toggle-sidebar-btn img {
+  height: 40px;
 }
 
-.sidebar-title {
-    background-color: #343a40;  /* Blue background for title */
-    color: #ffffff;            /* White text color for title */
-    padding: 10px 15px;
-    font-weight: bold;
-    cursor: pointer;  /* Make the title clickable to collapse/expand */
+/* DOWNLOAD PAGE */
+.download-list {
+  position: fixed; /* Make the list positionable */
+  top: 56px; /* Adjust for navbar height */
+  width: 100%; /* Ensure it fills the container */
 }
 
-.collapse {
-    /* ... default collapse styles from Bootstrap ... */
+
+.table-responsive {
+  max-height: 400px; /* Adjust the height as needed */
+  max-width: 1000px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.table-responsive thead th {
+  position: sticky;
+  top: -5px;
+  background-color: white; /* Adjust the background color as needed */
+  z-index: 10; /* Ensure the header stays above other content */
+  text-align: left;
 }
