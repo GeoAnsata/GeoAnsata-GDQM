@@ -73,6 +73,10 @@
             </li>
             {% endfor %}
         </ul>
+        <div class="button-container">
+            <a href="{{ url_for('apply_file_changes') }}" class="btn btn-primary small-btn">Apply file changes</a>
+            <a href="{{ url_for('discard_file_changes') }}" class="btn btn-secondary small-btn">Discard file changes</a>
+        </div>
     </div>
 
     <button id="toggle-sidebar-btn">

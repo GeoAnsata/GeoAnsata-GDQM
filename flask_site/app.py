@@ -44,6 +44,10 @@ def upload():
             sheet_names=list(df.keys())
             if(len(sheet_names)>1):
                 dict_sheet_names[file.filename]=sheet_names
+                for sheet_name in sheet_names:
+                    df=pd.read_excel(file,sheet_name=sheet_name)
+                    file_root, _ = os.path.splitext(file.filename)
+                    df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + sheet_name + ".csv"),index=False)
             else:
                 dict_sheet_names[file.filename]=[]
 
@@ -112,8 +116,10 @@ def remove_columns():
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
-        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            df.to_excel(writer, sheet_name=selected_sheet, index=False)
+        file_root, _ = os.path.splitext(file_name)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+        #with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            #df.to_excel(writer, sheet_name=selected_sheet, index=False)
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
 
@@ -138,8 +144,8 @@ def remove_rows():
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
-        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            df.to_excel(writer, sheet_name=selected_sheet, index=False)
+        file_root, _ = os.path.splitext(file_name)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
 
@@ -214,8 +220,47 @@ def plot_graph():
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
 
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64)
-
     
+@app.route('/apply_file_changes', methods=['GET'])
+def apply_file_changes():
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    df=load_df(app)
+    if file_name.endswith('.csv'):
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            df.to_excel(writer, sheet_name=selected_sheet, index=False)
+    elif file_name.endswith('.xlsx'):
+        df.to_excel(file_path,index=False)
+    return redirect(request.referrer or '/')
+
+
+@app.route('/discard_file_changes', methods=['GET'])
+def discard_file_changes():
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df=load_backup_df(app)
+    if file_name.endswith('.csv'):
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        file_root, _ = os.path.splitext(file_path)
+        df.to_csv(file_root + "_" + selected_sheet + ".csv",index=False)
+    elif file_name.endswith('.xlsx'):
+        df.to_excel(file_path,index=False)
+    return redirect(request.referrer or '/')
+
+
+#@app.route('/apply_all_changes', methods=['GET'])
+#def apply_all_changes():
+#    dict_sheet_names = session['sheet_names']
+
+
+#@app.route('/discard_all_changes', methods=['GET'])
 
 
 @app.route('/')

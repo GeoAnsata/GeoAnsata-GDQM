@@ -49,7 +49,28 @@
     margin: 0px 0; /* Adjust margin as needed */
   }
 
+  .button-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    text-align: center;
+}
 
+.button-container .btn {
+    width: 80%;
+    margin: 10px 0;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+.small-btn {
+  width: 80%;
+  margin: 10px 0;
+  padding: 5px 10px;
+  font-size: 12px;
+}
 
 .list-group-item a {
   white-space: nowrap;
