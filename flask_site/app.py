@@ -140,31 +140,40 @@ def remove_columns():
 def remove_rows():
     start_row = int(request.form.get('start_row'))
     end_row = int(request.form.get('end_row'))
+    sort_column = request.form.get('sort_column')
+    sort_order = request.form.get('sort_order')
+
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df=load_df(app)
-    current_time = datetime.now()
-    formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
-    history= load_history(app, temp=True)
+    df = load_df(app)
+
+    # Apply sorting
+    if sort_column and sort_column in df.columns:
+        df.sort_values(by=sort_column, ascending=(sort_order == 'asc'), inplace=True)
+    
     if end_row >= len(df):
         end_row = len(df) - 1
-    if(start_row<len(df)):
-        history.write(formatted_time + "Removed Lines from "+ str(start_row)+" to "+str(end_row)+ "\n")
+    if start_row < len(df):
+        history = load_history(app, temp=True)
+        current_time = datetime.now()
+        formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
+        history.write(formatted_time + "Removed Lines from " + str(start_row) + " to " + str(end_row) + "\n")
         history.close()
-    df.drop(df.index[start_row:end_row + 1], inplace=True)
-    df.sort_index(inplace=True)
+        df.drop(df.index[start_row:end_row + 1], inplace=True)
+        df.sort_index(inplace=True)
 
     if file_name.endswith('.csv'):
-        df.to_csv(file_path,index=False)
-    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-        selected_sheet=session['selected_sheet']
+        df.to_csv(file_path, index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name]) > 0):
+        selected_sheet = session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"), index=False)
     elif file_name.endswith('.xlsx'):
-        df.to_excel(file_path,index=False)
+        df.to_excel(file_path, index=False)
 
     return redirect(url_for('clean_data'))
+
 
 
 
