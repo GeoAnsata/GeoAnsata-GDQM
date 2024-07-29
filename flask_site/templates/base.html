@@ -51,6 +51,9 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('download_page') }}">Download</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('history') }}">History</a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -59,12 +62,14 @@
         <h4 id="sidebar-title" style="cursor: pointer;">Uploaded Files</h4>
         <ul class="list-group">
             {% for file, data_list in uploaded_files.items() %}
-            <li class="list-group-item">
+            <li class="list-group-item {% if file == selected_file %}selected{% endif %}">
                 {% if data_list|length > 0 %}
                 <a>{{ file }}</a>
                 <ul>
                     {% for sheet in data_list %}
-                    <li><a href="{{ url_for('select_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a></li>
+                    <li class="{% if file == selected_file and sheet == selected_sheet %}selected{% endif %}">
+                        <a href="{{ url_for('select_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
+                    </li>
                     {% endfor %}
                 </ul>
                 {% else %}

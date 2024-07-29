@@ -6,11 +6,20 @@ import tempfile
 import os
 import pandas as pd
 import shutil
+from datetime import datetime
+
 #TODO fazer com que as tabelas carregadas possam ter o tamanho que o utilizador quiser, atualmente ta 100
+#TODO ordenacao por coluna
+#TODO clicar na linha para removê-la depois
+#TODO adicionar filtros no display
+#TODO opçao de aplicar todas as mudanças de uma vez
+#TODO colunas das tabelas tao cortando os nomes
+#TODO download de imagens
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['TEMP_FOLDER'] = 'temp/'
 app.config['SECRET_KEY'] = 'your_secret_key'
+
 
 
 @app.before_first_request
@@ -32,6 +41,7 @@ def upload():
     for file in files:
         if file.filename == '':
             return render_template('index.html', error='Nenhum arquivo selecionado!')
+        file_root, _ = os.path.splitext(file.filename)
         if file and file.filename.endswith('.xlsx'):
             upload_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(upload_path)
@@ -46,19 +56,29 @@ def upload():
                 dict_sheet_names[file.filename]=sheet_names
                 for sheet_name in sheet_names:
                     df=pd.read_excel(file,sheet_name=sheet_name)
-                    file_root, _ = os.path.splitext(file.filename)
                     df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + sheet_name + ".csv"),index=False)
+                    f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + sheet_name + ".txt"), "w")
+                    f.close()                    
+                    f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + "_" + sheet_name + ".txt"), "w")
+                    f.close()
             else:
                 dict_sheet_names[file.filename]=[]
+                f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + ".txt"), "w")
+                f.close()
+                f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + ".txt"), "w")
+                f.close()
 
         elif file and file.filename.endswith('.csv'):
             dict_sheet_names[file.filename]=[]
             upload_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(upload_path)
             
-            # Copy to TEMP_FOLDER
             temp_path = os.path.join(app.config['TEMP_FOLDER'], file.filename)
             shutil.copy(upload_path, temp_path)
+            f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + ".txt"), "w")
+            f.close()
+            f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + ".txt"), "w")
+            f.close()
     session['sheet_names']=dict_sheet_names
     return redirect(url_for('index'))
 
@@ -83,32 +103,22 @@ def download_file(file_name):
     elif file_path.endswith('.csv'):
         return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
 
-
-def show_data():
-    try:
-        df =load_df(app)
-        df.sort_index(inplace=True)
-        df=df.head(100)
-        table_html = df.to_html(classes='table table-striped')
-
-        # Manually insert <thead> and <tbody>
-        table_html = table_html.replace('<table ', '<table class="table table-striped" ')
-        table_html = table_html.replace('<thead>', '<thead class="thead-light">')
-        table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
-
-        return render_template('display.html', table=table_html, uploaded_files=session['sheet_names'])
-    except:
-        return render_template('display.html', table=None, uploaded_files=session['sheet_names'])
-    
+ 
     
 #é possivel otimizar isso se eu em vez de salvar o excel salvar cada uma das sheets dele e so na hora de aplicar mudanças eu junto elas em um excel
 @app.route('/remove_columns', methods=['POST'])
 def remove_columns():
     columns_to_remove = request.form.getlist('columns_to_remove')
     file_name = session['selected_file']
+    file_root, _ = os.path.splitext(file_name)
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
     df=load_df(app)
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
+    history= load_history(app, temp=True)
+    history.write(formatted_time+"Removed columns:"+ str(columns_to_remove)+ "\n")
+    history.close()
     df.drop(columns=columns_to_remove, inplace=True, errors='raise')
     df.sort_index(inplace=True)
 
@@ -118,8 +128,7 @@ def remove_columns():
         selected_sheet=session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
         df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
-        #with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            #df.to_excel(writer, sheet_name=selected_sheet, index=False)
+
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
 
@@ -135,8 +144,14 @@ def remove_rows():
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
     df=load_df(app)
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
+    history= load_history(app, temp=True)
     if end_row >= len(df):
         end_row = len(df) - 1
+    if(start_row<len(df)):
+        history.write(formatted_time + "Removed Lines from "+ str(start_row)+" to "+str(end_row)+ "\n")
+        history.close()
     df.drop(df.index[start_row:end_row + 1], inplace=True)
     df.sort_index(inplace=True)
 
@@ -169,7 +184,7 @@ def criar_tabela_continuo_route():
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
 
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html)
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 @app.route('/data_dict', methods=['GET'])
@@ -188,7 +203,7 @@ def criar_data_dict_route():
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
 
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html)
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 import matplotlib.pyplot as plt
@@ -219,7 +234,7 @@ def plot_graph():
     img.seek(0)
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
 
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64)
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
     
 @app.route('/apply_file_changes', methods=['GET'])
 def apply_file_changes():
@@ -227,6 +242,17 @@ def apply_file_changes():
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
     df=load_df(app)
+    if df is None:
+        df = pd.DataFrame()
+    temp_history=load_history(app,"r", temp=True)
+    content = temp_history.read()
+    temp_history.close()
+    temp_history=load_history(app,"w", temp=True)
+    temp_history.close()
+
+    history=load_history(app,"a", temp=False)
+    history.write(content)
+    history.close()
     if file_name.endswith('.csv'):
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
@@ -244,6 +270,8 @@ def discard_file_changes():
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
     df=load_backup_df(app)
+    temp_history=load_history(app,"w", temp=True)
+    temp_history.close()
     if file_name.endswith('.csv'):
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
@@ -265,33 +293,54 @@ def discard_file_changes():
 
 @app.route('/')
 def index():
-    return render_template('index.html', uploaded_files=session['sheet_names'])
+    if not session['sheet_names']:
+        session['sheet_names'] = {}
+        session['selected_file']=''
+        session['selected_sheet']=''
+    return render_template('index.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
 
 @app.route('/display')
 def display():
-    return show_data()
+    try:
+        df = load_df(app)
+        
+        # Get start and lines_by_page from request arguments
+        start = request.args.get('start', default=0, type=int)
+        lines_by_page = request.args.get('lines_by_page', default=100, type=int)
+        
+        # Pass start and lines_by_page to get_table
+        table_html = get_table(df, request, start, lines_by_page)
+        return render_template('display.html', 
+                               table=table_html, 
+                               uploaded_files=session['sheet_names'], 
+                               selected_file=session["selected_file"], 
+                               selected_sheet=session["selected_sheet"],
+                               start=start,
+                               lines_by_page=lines_by_page)
+    except:
+        return render_template('display.html', 
+                               table=None, 
+                               uploaded_files=session['sheet_names'], 
+                               selected_file=session["selected_file"], 
+                               selected_sheet=session["selected_sheet"],
+                               start=0,
+                               lines_by_page=100)
 
 @app.route('/download_page')
 def download_page():
-    return render_template('download.html', uploaded_files=session['sheet_names'])
+    return render_template('download.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/clean_data')
 def clean_data():
     try:
         df = load_df(app)
         column_names = df.columns.tolist()
-        df.sort_index(inplace=True)
-        df=df.head(100)
-        table_html = df.to_html(classes='table table-striped')
+        table_html=get_table(df,request)
 
-        # Manually insert <thead> and <tbody>
-        table_html = table_html.replace('<table ', '<table class="table table-striped" ')
-        table_html = table_html.replace('<thead>', '<thead class="thead-light">')
-        table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
-
-        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names)
+        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
     except:
-        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[])
+        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():
@@ -299,8 +348,19 @@ def exploratory_analysis():
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None)
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+
+@app.route('/history')
+def history():
+    try:
+        history=load_history(app,"r",temp=False)
+        content = history.read()
+        print(content)
+        history.close()
+        return render_template('history.html',file_history=content,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+    except:
+        return render_template('history.html',file_history=None,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 @app.route('/select_file/<file_name>')
 def select_file(file_name):
     session['selected_file'] = file_name

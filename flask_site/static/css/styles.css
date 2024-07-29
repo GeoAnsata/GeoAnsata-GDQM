@@ -46,23 +46,42 @@
   align-items: center; /* Alinha verticalmente o texto */
 }
 .list-group-item {
-    margin: 0px 0; /* Adjust margin as needed */
-  }
+  margin: 0px 0; /* Adjust margin as needed */
+}
+.list-group-item a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  color: #007bff;
+}
 
-  .button-container {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    text-align: center;
+.list-group-item.selected {
+  background-color: #d1ecf1 !important;
+}
+
+.list-group-item a:hover {
+  text-decoration: underline;
+}
+
+.selected {
+  background-color: #a6d6de;
+}
+
+.button-container {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
 }
 
 .button-container .btn {
-    width: 80%;
-    margin: 10px 0;
-    padding: 10px 20px;
-    font-size: 16px;
+  width: 80%;
+  margin: 10px 0;
+  padding: 10px 20px;
+  font-size: 16px;
 }
 
 .small-btn {
@@ -72,11 +91,6 @@
   font-size: 12px;
 }
 
-.list-group-item a {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 #toggle-sidebar-btn {
   display: none;
   position: fixed;
@@ -90,6 +104,15 @@
   height: 40px;
 }
 
+
+/*HISTORY PAGE*/
+.history-list {
+  position: relative; /* Make the list positionable */
+  top: 20px; /* Adjust for navbar height */
+  width: 100%; /* Ensure it fills the container */
+}
+
+
 /* DOWNLOAD PAGE */
 .download-list {
   position: relative; /* Make the list positionable */
@@ -97,9 +120,8 @@
   width: 100%; /* Ensure it fills the container */
 }
 
-
 .table-responsive {
-  max-height: 400px; /* Adjust the height as needed */
+  max-height: 650px; /* Adjust the height as needed */
   max-width: 1000px;
   overflow-x: auto;
   overflow-y: auto;

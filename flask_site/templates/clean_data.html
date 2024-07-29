@@ -42,4 +42,29 @@
     </div>
     {% endif %}
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const headers = document.querySelectorAll("th[data-column]");
+        headers.forEach(header => {
+            header.style.cursor = 'pointer';
+            header.addEventListener("click", function() {
+                const column = header.getAttribute("data-column");
+                let currentUrl = new URL(window.location.href);
+                const currentColumn = currentUrl.searchParams.get("sort_column");
+                let newOrder = 'asc';
+                if (currentColumn === column) {
+                    const currentOrder = currentUrl.searchParams.get("sort_order");
+                    newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                }
+                currentUrl.searchParams.set("sort_column", column);
+                currentUrl.searchParams.set("sort_order", newOrder);
+                window.location.href = currentUrl.href;
+            });
+        });
+    });
+</script>
 {% endblock %}
+
+

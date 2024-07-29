@@ -8,10 +8,101 @@
     {% if table %}
     <div class="mt-5">
         <h2>Tabela:</h2>
+        <form id="pagination-form" method="get">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <label for="start">Start:</label>
+                    <input type="number" class="form-control" id="start" name="start" value="{{ start }}">
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="lines_by_page">Lines by page:</label>
+                    <input type="number" class="form-control" id="lines_by_page" name="lines_by_page" value="{{ lines_by_page }}">
+                </div>
+                <div class="form-group col-md-3 align-self-end">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                </div>
+            </div>
+        </form>
         <div class="table-responsive">
             {{ table | safe }}
+        </div>
+        <div class="mt-3">
+            <button id="previous-btn" class="btn btn-secondary">Previous</button>
+            <button id="next-btn" class="btn btn-secondary">Next</button>
         </div>
     </div>
     {% endif %}
 </div>
+
+<!-- Add custom styles -->
+<style>
+    th {
+        padding: 10px 20px; /* Adjust padding as needed */
+        position: relative; /* Ensure relative positioning for child elements */
+        text-align: left; /* Align text to the left if needed */
+    }
+    .sort-icon {
+        position: absolute;
+        right: 10px; /* Adjust as needed */
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.8em; /* Adjust font size as needed */
+        pointer-events: none; /* Ensure icons don't capture clicks */
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const headers = document.querySelectorAll("th[data-column]");
+        headers.forEach(header => {
+            const column = header.getAttribute("data-column");
+            let currentUrl = new URL(window.location.href);
+            const currentColumn = currentUrl.searchParams.get("sort_column");
+            let sortIcon = header.querySelector(".sort-icon");
+            if (currentColumn === column) {
+                const currentOrder = currentUrl.searchParams.get("sort_order");
+                if (sortIcon) {
+                    sortIcon.classList.remove("fa-arrow-up", "fa-arrow-down");
+                    sortIcon.classList.add(currentOrder === 'asc' ? "fa-arrow-up" : "fa-arrow-down");
+                }
+            } else if (sortIcon) {
+                sortIcon.classList.remove("fa-arrow-up", "fa-arrow-down");
+                sortIcon.classList.add("fa-sort"); // Default sort icon
+            }
+
+            header.style.cursor = 'pointer';
+            header.addEventListener("click", function() {
+                let newOrder = 'asc';
+                if (currentColumn === column) {
+                    const currentOrder = currentUrl.searchParams.get("sort_order");
+                    newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                }
+                currentUrl.searchParams.set("sort_column", column);
+                currentUrl.searchParams.set("sort_order", newOrder);
+                window.location.href = currentUrl.href;
+            });
+        });
+
+        document.getElementById('previous-btn').addEventListener('click', function() {
+            let start = parseInt(document.getElementById('start').value) || 0;
+            const linesByPage = parseInt(document.getElementById('lines_by_page').value) || 100;
+            if (start > 0) {
+                start = Math.max(start - linesByPage, 0);
+            }
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('start', start);
+            window.location.search = urlParams.toString();
+        });
+
+        document.getElementById('next-btn').addEventListener('click', function() {
+            const start = parseInt(document.getElementById('start').value) || 0;
+            const linesByPage = parseInt(document.getElementById('lines_by_page').value) || 100;
+            const newStart = start + linesByPage;
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('start', newStart);
+            window.location.search = urlParams.toString();
+        });
+    });
+</script>
 {% endblock %}

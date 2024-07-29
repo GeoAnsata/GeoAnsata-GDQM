@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}History{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>History</h2>
+    {% if file_history %}
+    <div class="mt-5">
+        <pre>{{ file_history }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

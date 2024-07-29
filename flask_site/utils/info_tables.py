@@ -1,5 +1,36 @@
 import pandas as pd
 
+
+
+def get_table(df, request, start, lines_by_page):
+    sort_column = request.args.get('sort_column', default=None, type=str)
+    sort_order = request.args.get('sort_order', default='asc', type=str)
+    
+    if sort_column and sort_column in df.columns:
+        df.sort_values(by=sort_column, ascending=(sort_order == 'asc'), inplace=True)
+    
+    df = df.reset_index(drop=True)
+    
+    # Slice the dataframe
+    df = df.iloc[start:start + lines_by_page]
+    
+    table_html = df.to_html(classes='table table-striped')
+
+    # Manually insert <thead> and <tbody>
+    table_html = table_html.replace('<table ', '<table class="table table-striped" ')
+    table_html = table_html.replace('<thead>', '<thead class="thead-light">')
+    table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
+
+    # Add data-column attribute to headers for easier access
+    for col in df.columns:
+        sort_arrow = '<i class="fas fa-sort"></i>'
+        if col == sort_column:
+            sort_arrow = '<i class="fas fa-sort-up"></i>' if sort_order == 'asc' else '<i class="fas fa-sort-down"></i>'
+        table_html = table_html.replace(f'<th>{col}</th>', f'<th data-column="{col}" style="cursor: pointer;">{col} {sort_arrow}</th>')
+    return table_html
+
+
+
 def custom_round(value):
     try:
         numeric_value = float(value)
