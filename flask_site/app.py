@@ -335,12 +335,16 @@ def download_page():
 def clean_data():
     try:
         df = load_df(app)
-        column_names = df.columns.tolist()
-        table_html=get_table(df,request)
 
-        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+        start = request.args.get('start', default=0, type=int)
+        lines_by_page = request.args.get('lines_by_page', default=100, type=int)
+
+        column_names = df.columns.tolist()
+        table_html = get_table(df, request, start, lines_by_page)
+
+        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"],start=start,lines_by_page=lines_by_page)
     except:
-        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"], start=0, lines_by_page=100)
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():
