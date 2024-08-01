@@ -8,13 +8,16 @@ import pandas as pd
 import shutil
 from datetime import datetime
 
-#TODO fazer com que as tabelas carregadas possam ter o tamanho que o utilizador quiser, atualmente ta 100
-#TODO ordenacao por coluna
 #TODO clicar na linha para removê-la depois
 #TODO adicionar filtros no display
 #TODO opçao de aplicar todas as mudanças de uma vez
-#TODO colunas das tabelas tao cortando os nomes
 #TODO download de imagens
+#TODO tela de carregamento
+#TODO mensagens de confimacao
+#TODO mais informacoes no historico (por exemplo porcentagem do banco de dados)
+#TODO salvar dados removidos (mostrar no historico os pedacos das tabelas que foram dropados)
+#TODO pensar num sistema de gerar relatorios (geração de um relatorio a partir das imagens e analises geradas)
+#TODO pesquisar sobre lincensiamento e direitos de uso
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['TEMP_FOLDER'] = 'temp/'
@@ -32,15 +35,15 @@ def init_session_vars():
     session['selected_sheet']=''
 
 
-@app.route('/upload', methods=['POST'])
-def upload():
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
     if 'files' not in request.files:
-        return render_template('index.html', error='Nenhum arquivo enviado!')
+        return render_template('upload.html', error='Nenhum arquivo enviado!')
     files = request.files.getlist('files')
     dict_sheet_names=session['sheet_names']
     for file in files:
         if file.filename == '':
-            return render_template('index.html', error='Nenhum arquivo selecionado!')
+            return render_template('upload.html', error='Nenhum arquivo selecionado!')
         file_root, _ = os.path.splitext(file.filename)
         if file and file.filename.endswith('.xlsx'):
             upload_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
@@ -80,7 +83,7 @@ def upload():
             f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + ".txt"), "w")
             f.close()
     session['sheet_names']=dict_sheet_names
-    return redirect(url_for('index'))
+    return redirect(url_for('upload'))
 
 
 @app.route('/download_sheet/<file_name>/<sheet_name>', methods=['GET'])
@@ -301,12 +304,12 @@ def discard_file_changes():
 
 
 @app.route('/')
-def index():
-    if not session['sheet_names']:
+def upload():
+    if 'sheet_names' not in session:
         session['sheet_names'] = {}
         session['selected_file']=''
         session['selected_sheet']=''
-    return render_template('index.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+    return render_template('upload.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 @app.route('/display')
@@ -326,7 +329,8 @@ def display():
                                selected_file=session["selected_file"], 
                                selected_sheet=session["selected_sheet"],
                                start=start,
-                               lines_by_page=lines_by_page)
+                               lines_by_page=lines_by_page,
+                               num_lines=df.shape[0])
     except:
         return render_template('display.html', 
                                table=None, 
@@ -334,7 +338,8 @@ def display():
                                selected_file=session["selected_file"], 
                                selected_sheet=session["selected_sheet"],
                                start=0,
-                               lines_by_page=100)
+                               lines_by_page=100,
+                               num_lines=0)
 
 @app.route('/download_page')
 def download_page():
@@ -351,9 +356,25 @@ def clean_data():
         column_names = df.columns.tolist()
         table_html = get_table(df, request, start, lines_by_page)
 
-        return render_template('clean_data.html', table=table_html, uploaded_files=session['sheet_names'], column_names=column_names, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"],start=start,lines_by_page=lines_by_page)
+        return render_template('clean_data.html', 
+                               table=table_html, 
+                               uploaded_files=session['sheet_names'], 
+                               column_names=column_names, 
+                               selected_file=session["selected_file"], 
+                               selected_sheet=session["selected_sheet"],
+                               start=start,
+                               lines_by_page=lines_by_page,
+                               num_lines=df.shape[0])
     except:
-        return render_template('clean_data.html', table=None, uploaded_files=session['sheet_names'], column_names=[], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"], start=0, lines_by_page=100)
+        return render_template('clean_data.html',
+                                table=None,
+                                uploaded_files=session['sheet_names'], 
+                                column_names=[], 
+                                selected_file=session["selected_file"], 
+                                selected_sheet=session["selected_sheet"], 
+                                start=0, 
+                                lines_by_page=100,
+                                num_lines=0)
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():
