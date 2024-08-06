@@ -3,7 +3,14 @@
 {% block title %}Upload Files{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div id="disclaimer" class="disclaimer">
+    <div class="disclaimer-content">
+        <p>Este site utiliza cookies para melhorar sua experiência. Ao continuar navegando, você concorda com nossa política de privacidade.</p>
+        <button id="disclaimer-ok" onclick="acceptDisclaimer()">OK</button>
+    </div>
+</div>
+
+<div class="container mt-5 main-content">
     <h2>Upload Excel or CSV</h2>
     <form id="uploadForm" action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data">
         <div class="form-group">
@@ -24,8 +31,18 @@
 
 {% block scripts %}
 <script>
-    $(document).ready(function() {
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!sessionStorage.getItem('disclaimerAccepted')) {
+            document.getElementById('disclaimer').style.display = 'block';
+        }
+    });
 
+    function acceptDisclaimer() {
+        sessionStorage.setItem('disclaimerAccepted', 'true');
+        document.getElementById('disclaimer').style.display = 'none';
+    }
+
+    $(document).ready(function() {
         // Mostrar modal ao enviar o formulário
         $('#uploadForm').on('submit', function() {
             $('#loadingModal').modal('show');

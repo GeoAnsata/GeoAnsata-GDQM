@@ -56,6 +56,7 @@ block content %}
   <div class="mt-5">
     <h2>Tabela:</h2>
     <div class="table-responsive">{{ table | safe }}</div>
+    <a href="{{ url_for('download_csv') }}" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
   </div>
   {% endif %}
 
@@ -79,7 +80,9 @@ block content %}
   {% if image %}
   <h3>Generated Plot:</h3>
   <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
+  <a href="{{ url_for('download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Plot</a>
   {% endif %}
 {% endif %}
 </div>
 {% endblock %}
+

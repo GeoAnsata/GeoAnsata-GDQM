@@ -10,14 +10,11 @@ from datetime import datetime
 
 #TODO clicar na linha para removê-la depois
 #TODO adicionar filtros no display
-#TODO opçao de aplicar todas as mudanças de uma vez
-#TODO download de imagens
-#TODO tela de carregamento
 #TODO mensagens de confimacao
 #TODO mais informacoes no historico (por exemplo porcentagem do banco de dados)
 #TODO salvar dados removidos (mostrar no historico os pedacos das tabelas que foram dropados)
 #TODO pensar num sistema de gerar relatorios (geração de um relatorio a partir das imagens e analises geradas)
-#TODO pesquisar sobre lincensiamento e direitos de uso
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['TEMP_FOLDER'] = 'temp/'
@@ -189,6 +186,10 @@ def criar_tabela_continuo_route():
     if(df is not None):
         column_names = df.columns.tolist()
 
+
+    file_root, _ = os.path.splitext(session['selected_file'])
+    tabela_continua.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv"),index=False)
+
     table_html = tabela_continua.to_html(classes='table table-striped')
 
     # Manually insert <thead> and <tbody>
@@ -208,6 +209,10 @@ def criar_data_dict_route():
     if(df is not None):
         column_names = df.columns.tolist()
 
+
+    file_root, _ = os.path.splitext(session['selected_file'])
+    data_dict.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv"),index=False)
+
     table_html = data_dict.to_html(classes='table table-striped')
 
     # Manually insert <thead> and <tbody>
@@ -217,6 +222,13 @@ def criar_data_dict_route():
 
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+@app.route('/download_csv', methods=['GET'])
+def download_csv():
+    file_root, _ = os.path.splitext(session['selected_file'])
+    temp_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv")
+    if temp_filename and os.path.exists(temp_filename):
+        return send_file( temp_filename, as_attachment=True, download_name=file_root + "_exploratory_table.csv", mimetype='text/csv')
+    return "No table to download", 400
 
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -246,8 +258,22 @@ def plot_graph():
     img.seek(0)
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
 
+    file_root, _ = os.path.splitext(session['selected_file'])
+    image_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_plot.png")
+    with open(image_filename, 'wb') as f:
+        f.write(img.getvalue())
+
+
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
-    
+
+@app.route('/download_plot', methods=['GET'])
+def download_plot():
+    file_root, _ = os.path.splitext(session['selected_file'])
+    temp_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_plot.png")
+    if temp_filename and os.path.exists(temp_filename):
+        return send_file( temp_filename, as_attachment=True, download_name=file_root + "_plot.png", mimetype='png')
+    return "No plot to download", 400
+
 @app.route('/apply_file_changes', methods=['GET'])
 def apply_file_changes():
     file_name = session['selected_file']
