@@ -13,8 +13,9 @@ from datetime import datetime
 #TODO adicionar filtros no display
 #TODO mensagens de confimacao
 #TODO mais informacoes no historico (por exemplo porcentagem do banco de dados)
-#TODO salvar dados removidos (mostrar no historico os pedacos das tabelas que foram dropados)
 #TODO pensar num sistema de gerar relatorios (geração de um relatorio a partir das imagens e analises geradas)
+#TODO opção de adicionar comentários a remoção
+#TODO adicionar remoção por query
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -106,17 +107,19 @@ def download_file(file_name):
 
  
     
-#é possivel otimizar isso se eu em vez de salvar o excel salvar cada uma das sheets dele e so na hora de aplicar mudanças eu junto elas em um excel
 @app.route('/remove_columns', methods=['POST'])
 def remove_columns():
     columns_to_remove = request.form.getlist('columns_to_remove')
+    comment = request.form.get('comment')
+    if(comment):
+        comment="Comentário: " + comment 
     file_name = session['selected_file']
     file_root, _ = os.path.splitext(file_name)
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
     df=load_df(app)
     table_html = get_table(df[columns_to_remove], request, 0, 100)
-    additional_text = "Número de linhas = " + str(df.shape[0])
+    num_lines = "Número de linhas = " + str(df.shape[0])
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
@@ -126,7 +129,9 @@ def remove_columns():
     
     # Tabela colapsável com identificador único
     history.write(f'<div id="{id}" class="collapse">')
-    history.write(f'<p>{additional_text}</p>')
+    history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        history.write(f'<p>{comment}</p>')
     history.write('<div class="table-responsive">')
     history.write(table_html + " </div>")
     history.write('</div>')
@@ -154,6 +159,9 @@ def remove_rows():
     end_row = int(request.form.get('end_row'))
     sort_column = request.form.get('sort_column')
     sort_order = request.form.get('sort_order')
+    comment = request.form.get('comment')
+    if(comment):
+        comment="Comentário: " + comment 
 
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
@@ -172,13 +180,15 @@ def remove_rows():
         formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
         id =  re.sub(r'\W+', '_', formatted_time)
         table_html = get_table(df.iloc[start_row:end_row + 1], request, 0, 100, reset_index=False)
-        additional_text = "Número de linhas = " + str(end_row-start_row)
+        num_lines = "Número de linhas = " + str(end_row-start_row)
         history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
         history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a></pre>\n")
         
         # Tabela colapsável com identificador único
         history.write(f'<div id="{id}" class="collapse">')
-        history.write(f'<p>{additional_text}</p>')
+        history.write(f'<p>{num_lines}</p>')
+        if(comment):
+            history.write(f'<p>{comment}</p>')
         history.write('<div class="table-responsive">')
         history.write(table_html + " </div>")
         history.write('</div>')
@@ -197,8 +207,98 @@ def remove_rows():
 
     return redirect(url_for('clean_data'))
 
+@app.route('/remove_nulls', methods=['POST'])
+def remove_nulls():
+    columns_to_remove = request.form.getlist('columns_to_remove')
+    comment = request.form.get('comment')
+    if(comment):
+        comment="Comentário: " + comment 
+    file_name = session['selected_file']
+    file_root, _ = os.path.splitext(file_name)
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df=load_df(app)
+    removed=df[df[columns_to_remove].isna().any(axis=1)]
+    table_html = get_table(removed, request, 0, 100)
+    num_lines = "Número de linhas = " + str(removed.shape[0])
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+    id =  re.sub(r'\W+', '_', formatted_time)
+    history= load_history(app, temp=True)
+    history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+    history.write(formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n</a></pre>\n")
+    
+    # Tabela colapsável com identificador único
+    history.write(f'<div id="{id}" class="collapse">')
+    history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        history.write(f'<p>{comment}</p>')
+    history.write('<div class="table-responsive">')
+    history.write(table_html + " </div>")
+    history.write('</div>')
+    history.close()
+    df.dropna(subset=columns_to_remove, inplace=True)
+    df.sort_index(inplace=True)
+
+    if file_name.endswith('.csv'):
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        file_root, _ = os.path.splitext(file_name)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+
+    elif file_name.endswith('.xlsx'):
+        df.to_excel(file_path,index=False)
 
 
+    return redirect(url_for('clean_data'))
+
+#adicionar aviso para querys invalidas
+@app.route('/remove_query', methods=['POST'])
+def remove_query():
+    query_str = request.form.get('query_string')
+    comment = request.form.get('comment')
+    if(comment):
+        comment="Comentário: " + comment 
+    file_name = session['selected_file']
+    file_root, _ = os.path.splitext(file_name)
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df=load_df(app)
+    rows_to_drop=df.query(query_str)
+    table_html = get_table(rows_to_drop, request, 0, 100)
+    num_lines = "Número de linhas = " + str(rows_to_drop.shape[0])
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+    id =  re.sub(r'\W+', '_', formatted_time)
+    history= load_history(app, temp=True)
+    history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+    history.write(formatted_time + "Removed by query:" + query_str + "\n</a></pre>\n")
+    
+    # Tabela colapsável com identificador único
+    history.write(f'<div id="{id}" class="collapse">')
+    history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        history.write(f'<p>{comment}</p>')
+    history.write('<div class="table-responsive">')
+    history.write(table_html + " </div>")
+    history.write('</div>')
+    history.close()
+    df.drop(index=rows_to_drop.index, inplace=True)
+    df.sort_index(inplace=True)
+
+    if file_name.endswith('.csv'):
+        df.to_csv(file_path,index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        file_root, _ = os.path.splitext(file_name)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+
+    elif file_name.endswith('.xlsx'):
+        df.to_excel(file_path,index=False)
+
+
+    return redirect(url_for('clean_data'))
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
 def criar_tabela_continuo_route():
@@ -297,6 +397,8 @@ def download_plot():
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_plot.png", mimetype='png')
     return "No plot to download", 400
 
+
+#da erro se tentar aplicar mudanças sem ter
 @app.route('/apply_file_changes', methods=['GET'])
 def apply_file_changes():
     file_name = session['selected_file']
