@@ -7,7 +7,7 @@
     <h2>History</h2>
     {% if file_history %}
     <div class="mt-5">
-        <pre>{{ file_history }}</pre>
+        {{ file_history|safe }} 
     </div>
     {% endif %}
 </div>

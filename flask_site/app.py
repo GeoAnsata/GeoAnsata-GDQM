@@ -4,6 +4,7 @@ from utils.info_tables import *
 from utils.load_df import *
 import tempfile
 import os
+import re
 import pandas as pd
 import shutil
 from datetime import datetime
@@ -114,10 +115,21 @@ def remove_columns():
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
     df=load_df(app)
+    table_html = get_table(df[columns_to_remove], request, 0, 100)
+    additional_text = "Número de linhas = " + str(df.shape[0])
     current_time = datetime.now()
-    formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
+    formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+    id =  re.sub(r'\W+', '_', formatted_time)
     history= load_history(app, temp=True)
-    history.write(formatted_time+"Removed columns:"+ str(columns_to_remove)+ "\n")
+    history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+    history.write(formatted_time + "Removed columns:" + str(columns_to_remove) + "\n</a></pre>\n")
+    
+    # Tabela colapsável com identificador único
+    history.write(f'<div id="{id}" class="collapse">')
+    history.write(f'<p>{additional_text}</p>')
+    history.write('<div class="table-responsive">')
+    history.write(table_html + " </div>")
+    history.write('</div>')
     history.close()
     df.drop(columns=columns_to_remove, inplace=True, errors='raise')
     df.sort_index(inplace=True)
@@ -157,8 +169,19 @@ def remove_rows():
     if start_row < len(df):
         history = load_history(app, temp=True)
         current_time = datetime.now()
-        formatted_time = current_time.strftime('[%Y-%m-%d %H:%M:%S] ')
-        history.write(formatted_time + "Removed Lines from " + str(start_row) + " to " + str(end_row) + "\n")
+        formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+        id =  re.sub(r'\W+', '_', formatted_time)
+        table_html = get_table(df.iloc[start_row:end_row + 1], request, 0, 100, reset_index=False)
+        additional_text = "Número de linhas = " + str(end_row-start_row)
+        history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+        history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a></pre>\n")
+        
+        # Tabela colapsável com identificador único
+        history.write(f'<div id="{id}" class="collapse">')
+        history.write(f'<p>{additional_text}</p>')
+        history.write('<div class="table-responsive">')
+        history.write(table_html + " </div>")
+        history.write('</div>')
         history.close()
         df.drop(df.index[start_row:end_row + 1], inplace=True)
         df.sort_index(inplace=True)
@@ -416,7 +439,6 @@ def history():
     try:
         history=load_history(app,"r",temp=False)
         content = history.read()
-        print(content)
         history.close()
         return render_template('history.html',file_history=content,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
     except:

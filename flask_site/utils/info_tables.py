@@ -2,14 +2,15 @@ import pandas as pd
 
 
 
-def get_table(df, request, start, lines_by_page):
+def get_table(df, request, start, lines_by_page, reset_index=True):
     sort_column = request.args.get('sort_column', default=None, type=str)
     sort_order = request.args.get('sort_order', default='asc', type=str)
     
     if sort_column and sort_column in df.columns:
         df.sort_values(by=sort_column, ascending=(sort_order == 'asc'), inplace=True)
     
-    df = df.reset_index(drop=True)
+    if(reset_index):
+        df = df.reset_index(drop=True)
     
     # Slice the dataframe
     df = df.iloc[start:start + lines_by_page]
