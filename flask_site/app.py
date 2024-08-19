@@ -9,13 +9,14 @@ import pandas as pd
 import shutil
 from datetime import datetime
 
+
+#TODO criar pdfs de exportação para o historico (completo com tabelas e simples com operações e comentários)
+#TODO adicionar um dois e tres desvios padroes (teste de consistência)
 #TODO clicar na linha para removê-la depois
 #TODO adicionar filtros no display
 #TODO mensagens de confimacao
-#TODO mais informacoes no historico (por exemplo porcentagem do banco de dados)
 #TODO pensar num sistema de gerar relatorios (geração de um relatorio a partir das imagens e analises geradas)
-#TODO opção de adicionar comentários a remoção
-#TODO adicionar remoção por query
+#TODO adicionar calculadora para remocao por query
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -126,8 +127,6 @@ def remove_columns():
     history= load_history(app, temp=True)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
     history.write(formatted_time + "Removed columns:" + str(columns_to_remove) + "\n</a></pre>\n")
-    
-    # Tabela colapsável com identificador único
     history.write(f'<div id="{id}" class="collapse">')
     history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -136,6 +135,18 @@ def remove_columns():
     history.write(table_html + " </div>")
     history.write('</div>')
     history.close()
+
+    complete_history=load_history_pdf(app,temp=True)
+    complete_history.write("<a>"+formatted_time + "Removed columns: " + str(columns_to_remove) + "\n</a>\n")
+    full_table_html = get_table(df[columns_to_remove], request, 0, df.shape[0])
+    complete_history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        complete_history.write(f'<p>{comment}</p>')
+    complete_history.write('<div class="table-responsive">')
+    complete_history.write(full_table_html )
+    complete_history.write('</div>')
+    complete_history.close()
+
     df.drop(columns=columns_to_remove, inplace=True, errors='raise')
     df.sort_index(inplace=True)
 
@@ -180,7 +191,8 @@ def remove_rows():
         formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
         id =  re.sub(r'\W+', '_', formatted_time)
         table_html = get_table(df.iloc[start_row:end_row + 1], request, 0, 100, reset_index=False)
-        num_lines = "Número de linhas = " + str(end_row-start_row)
+
+        num_lines = "Remoção de "+str(end_row-start_row)+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-end_row+start_row) + " linhas"
         history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
         history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a></pre>\n")
         
@@ -193,6 +205,20 @@ def remove_rows():
         history.write(table_html + " </div>")
         history.write('</div>')
         history.close()
+
+
+
+        complete_history=load_history_pdf(app,temp=True)
+        complete_history.write("<a>"+formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a>\n")
+        full_table_html = get_table(df, request, start_row, end_row + 1, reset_index=False)
+        complete_history.write(f'<p>{num_lines}</p>')
+        if(comment):
+            complete_history.write(f'<p>{comment}</p>')
+        complete_history.write('<div class="table-responsive">')
+        complete_history.write(full_table_html )
+        complete_history.write('</div>')
+        complete_history.close()
+
         df.drop(df.index[start_row:end_row + 1], inplace=True)
         df.sort_index(inplace=True)
 
@@ -220,7 +246,7 @@ def remove_nulls():
     df=load_df(app)
     removed=df[df[columns_to_remove].isna().any(axis=1)]
     table_html = get_table(removed, request, 0, 100)
-    num_lines = "Número de linhas = " + str(removed.shape[0])
+    num_lines = "Remoção de "+str(removed.shape[0])+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-removed.shape[0]) + " linhas"
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
@@ -237,6 +263,19 @@ def remove_nulls():
     history.write(table_html + " </div>")
     history.write('</div>')
     history.close()
+
+    complete_history=load_history_pdf(app,temp=True)
+    complete_history.write("<a>"+formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n</a>\n")
+    full_table_html = get_table(removed, request, 0, removed.shape[0] + 1, reset_index=False)
+    complete_history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        complete_history.write(f'<p>{comment}</p>')
+    complete_history.write('<div class="table-responsive">')
+    complete_history.write(full_table_html )
+    complete_history.write('</div>')
+    complete_history.close()
+
+
     df.dropna(subset=columns_to_remove, inplace=True)
     df.sort_index(inplace=True)
 
@@ -267,7 +306,8 @@ def remove_query():
     df=load_df(app)
     rows_to_drop=df.query(query_str)
     table_html = get_table(rows_to_drop, request, 0, 100)
-    num_lines = "Número de linhas = " + str(rows_to_drop.shape[0])
+
+    num_lines = "Remoção de "+str(rows_to_drop.shape[0])+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-rows_to_drop.shape[0]) + " linhas"
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
@@ -284,6 +324,22 @@ def remove_query():
     history.write(table_html + " </div>")
     history.write('</div>')
     history.close()
+
+
+
+    
+    complete_history=load_history_pdf(app,temp=True)
+    complete_history.write("<a>"+formatted_time + "Removed by query:" + query_str+ "\n</a>\n")
+    full_table_html = get_table(rows_to_drop, request, 0, rows_to_drop.shape[0] + 1, reset_index=False)
+    complete_history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        complete_history.write(f'<p>{comment}</p>')
+    complete_history.write('<div class="table-responsive">')
+    complete_history.write(full_table_html )
+    complete_history.write('</div>')
+    complete_history.close()
+
+    
     df.drop(index=rows_to_drop.index, inplace=True)
     df.sort_index(inplace=True)
 
@@ -299,6 +355,42 @@ def remove_query():
 
 
     return redirect(url_for('clean_data'))
+
+from xhtml2pdf import pisa
+@app.route('/export_pdf', methods=['GET'])
+def export_pdf():
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_root, _ = os.path.splitext(file_name)
+    if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+        selected_sheet=session['selected_sheet']
+        history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "_" + selected_sheet + "complete.html")
+        print(history_path)
+    else:
+        history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "complete.html")
+    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history.pdf')
+    
+
+    with open(history_path, "r") as file:
+        html_content = file.read()
+
+
+    with open("./templates/includes/history_pdf.html", "r") as file:
+        html_style = file.read()
+
+    pdf_output = BytesIO()
+
+    pisa.CreatePDF(html_content + html_style, dest=pdf_output, encoding='utf-8')
+
+    # Open a PDF file for writing in binary mode
+    with open(pdf_path, "wb") as pdf_file:
+    
+        # Write the PDF content to the file
+        pdf_file.write(pdf_output.getvalue())
+    
+    return send_file(pdf_path, as_attachment=True)
+
+
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
 def criar_tabela_continuo_route():
@@ -416,6 +508,21 @@ def apply_file_changes():
     history=load_history(app,"a", temp=False)
     history.write(content)
     history.close()
+
+
+
+        
+    temp_history_pdf=load_history_pdf(app,"r", temp=True)
+    content_pdf = temp_history_pdf.read()
+    temp_history_pdf.close()
+    temp_history_pdf=load_history_pdf(app,"w", temp=True)
+    temp_history_pdf.close()
+
+    history_pdf=load_history_pdf(app,"a", temp=False)
+    history_pdf.write(content_pdf)
+    history_pdf.close()
+
+
     if file_name.endswith('.csv'):
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
@@ -435,6 +542,9 @@ def discard_file_changes():
     df=load_backup_df(app)
     temp_history=load_history(app,"w", temp=True)
     temp_history.close()
+
+    temp_history_pdf=load_history_pdf(app,"w", temp=True)
+    temp_history_pdf.close()
     if file_name.endswith('.csv'):
         df.to_csv(file_path,index=False)
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
@@ -445,13 +555,6 @@ def discard_file_changes():
         df.to_excel(file_path,index=False)
     return redirect(request.referrer or '/')
 
-
-#@app.route('/apply_all_changes', methods=['GET'])
-#def apply_all_changes():
-#    dict_sheet_names = session['sheet_names']
-
-
-#@app.route('/discard_all_changes', methods=['GET'])
 
 
 @app.route('/')
@@ -545,6 +648,7 @@ def history():
         return render_template('history.html',file_history=content,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
     except:
         return render_template('history.html',file_history=None,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
 @app.route('/select_file/<file_name>')
 def select_file(file_name):
     session['selected_file'] = file_name

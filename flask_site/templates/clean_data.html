@@ -10,15 +10,15 @@
         <div class="form-group">
             <label>Selecione as colunas para remover valores nulos:</label><br>
             <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="select_all" />
-                <label class="form-check-label" for="select_all">Selecionar Todas</label>
+                <input class="form-check-input" type="checkbox" id="select_all_null" />
+                <label class="form-check-label" for="select_all_null">Selecionar Todas</label>
             </div>
 
             {% for coluna in column_names %}
             <div class="form-check form-check-inline">
-                <input class="form-check-input column-checkbox" type="checkbox" name="columns_to_remove" value="{{ coluna }}"
-                    id="remove_{{ coluna }}">
-                <label class="form-check-label" for="remove_{{ coluna }}">{{ coluna }}</label>
+                <input class="form-check-input null-column-checkbox" type="checkbox" name="columns_to_remove" value="{{ coluna }}"
+                    id="remove_null_{{ coluna }}">
+                <label class="form-check-label" for="remove_null_{{ coluna }}">{{ coluna }}</label>
             </div>
             {% endfor %}
         </div>
@@ -32,9 +32,14 @@
     <form action="/remove_columns" method="POST" class="mt-3" id="removeColumnsForm">
         <div class="form-group">
             <label>Selecione as colunas para remover:</label><br>
+
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="select_all" />
+                <label class="form-check-label" for="select_all">Selecionar Todas</label>
+            </div>
             {% for coluna in column_names %}
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" name="columns_to_remove" value="{{ coluna }}"
+                <input class="form-check-input column-checkbox" type="checkbox" name="columns_to_remove" value="{{ coluna }}"
                  id="remove_{{ coluna }}">
                 <label class="form-check-label" for="remove_{{ coluna }}">{{ coluna }}</label>
             </div>
@@ -167,6 +172,14 @@ document.addEventListener("DOMContentLoaded", function() {
         $('#loadingModal').modal('show');
     });
 
+    document.getElementById('removeQueryForm').addEventListener('submit', function() {
+        $('#loadingModal').modal('show');
+    });
+
+    document.getElementById('removeNullsForm').addEventListener('submit', function() {
+        $('#loadingModal').modal('show');
+    });
+
     document.getElementById('previous-btn').addEventListener('click', function() {
         let start = parseInt(document.getElementById('start').value) || 0;
         const linesByPage = parseInt(document.getElementById('lines_by_page').value) || 100;
@@ -189,6 +202,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById('select_all').addEventListener('change', function() {
         var checkboxes = document.querySelectorAll('.column-checkbox');
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+    });
+
+    document.getElementById('select_all_null').addEventListener('change', function() {
+        var checkboxes = document.querySelectorAll('.null-column-checkbox');
         checkboxes.forEach(checkbox => checkbox.checked = this.checked);
     });
 });

@@ -14,8 +14,13 @@ def get_table(df, request, start, lines_by_page, reset_index=True):
     
     # Slice the dataframe
     df = df.iloc[start:start + lines_by_page]
+    df = df.copy()
+    for col in df.select_dtypes(include=['float']).columns:
+        df[col] = df[col].map('{:.6f}'.format)
     
-    table_html = df.to_html(classes='table table-striped')
+    # Convert to HTML
+    table_html = df.to_html(classes='table table-striped', index=False)
+
 
     # Manually insert <thead> and <tbody>
     table_html = table_html.replace('<table ', '<table class="table table-striped" ')
