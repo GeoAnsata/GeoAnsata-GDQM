@@ -10,14 +10,6 @@ import shutil
 from datetime import datetime
 
 
-#TODO criar pdfs de exportação para o historico (completo com tabelas e simples com operações e comentários)
-#TODO adicionar um dois e tres desvios padroes (teste de consistência)
-#TODO clicar na linha para removê-la depois
-#TODO adicionar filtros no display
-#TODO mensagens de confimacao
-#TODO pensar num sistema de gerar relatorios (geração de um relatorio a partir das imagens e analises geradas)
-#TODO adicionar calculadora para remocao por query
-
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['TEMP_FOLDER'] = 'temp/'
@@ -565,35 +557,71 @@ def upload():
         session['selected_sheet']=''
     return render_template('upload.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
-
 @app.route('/display')
 def display():
     try:
+        # Carrega o DataFrame
         df = load_df(app)
         
-        # Get start and lines_by_page from request arguments
+        # Define os nomes das colunas para o dropdown
+        column_names = df.columns.tolist()
+        
+        # Captura os parâmetros de paginação e filtragem da URL
         start = request.args.get('start', default=0, type=int)
         lines_by_page = request.args.get('lines_by_page', default=100, type=int)
         
-        # Pass start and lines_by_page to get_table
+        # Captura os parâmetros de filtro
+        filter_column = request.args.get('filter_column')
+        filter_operator = request.args.get('filter_operator')
+        filter_value = request.args.get('filter_value')
+        
+        # Aplica o filtro ao DataFrame, se todos os parâmetros de filtro estiverem presentes
+        if filter_column and filter_operator and filter_value:
+            try:
+                filter_value = float(filter_value) if filter_value.replace('.', '', 1).isdigit() else filter_value
+                if filter_operator == "equals":
+                    df = df[df[filter_column] == filter_value]
+                elif filter_operator == "not_equals":
+                    df = df[df[filter_column] != filter_value]
+                elif filter_operator == "greater_than":
+                    df = df[pd.to_numeric(df[filter_column], errors='coerce') > filter_value]
+                elif filter_operator == "less_than":
+                    df = df[pd.to_numeric(df[filter_column], errors='coerce') < filter_value]
+                elif filter_operator == "greater_equal":
+                    df = df[pd.to_numeric(df[filter_column], errors='coerce') >= filter_value]
+                elif filter_operator == "less_equal":
+                    df = df[pd.to_numeric(df[filter_column], errors='coerce') <= filter_value]
+            except ValueError:
+                pass  # Ignore filtering if conversion fails for non-numeric comparisons
+        
+        # Gera a tabela HTML com base nos dados filtrados e na paginação
         table_html = get_table(df, request, start, lines_by_page)
-        return render_template('display.html', 
-                               table=table_html, 
-                               uploaded_files=session['sheet_names'], 
-                               selected_file=session["selected_file"], 
-                               selected_sheet=session["selected_sheet"],
-                               start=start,
-                               lines_by_page=lines_by_page,
-                               num_lines=df.shape[0])
-    except:
-        return render_template('display.html', 
-                               table=None, 
-                               uploaded_files=session['sheet_names'], 
-                               selected_file=session["selected_file"], 
-                               selected_sheet=session["selected_sheet"],
-                               start=0,
-                               lines_by_page=100,
-                               num_lines=0)
+        
+        # Renderiza o template com a tabela e os parâmetros
+        return render_template(
+            'display.html',
+            table=table_html,
+            uploaded_files=session['sheet_names'],
+            selected_file=session["selected_file"],
+            selected_sheet=session["selected_sheet"],
+            start=start,
+            lines_by_page=lines_by_page,
+            num_lines=df.shape[0],
+            column_names=column_names  # Passa os nomes das colunas para o template
+        )
+    except Exception as e:
+        print(f"Erro ao exibir a tabela: {e}")
+        return render_template(
+            'display.html',
+            table=None,
+            uploaded_files=session['sheet_names'],
+            selected_file=session["selected_file"],
+            selected_sheet=session["selected_sheet"],
+            start=0,
+            lines_by_page=100,
+            num_lines=0,
+            column_names=[]
+        )
 
 @app.route('/download_page')
 def download_page():
