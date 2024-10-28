@@ -80,6 +80,39 @@
         <button type="submit" class="btn btn-danger">Remover por Query</button>
     </form>
 
+    <form action="/remove_filtered_rows" method="POST" class="mt-3" id="removeFilteredRowsForm">
+        <div class="form-group">
+            <label for="filter_column">Selecione a coluna para o filtro:</label>
+            <select class="form-control" id="filter_column" name="filter_column">
+                <option value="">Selecione uma coluna</option>
+                {% for coluna in column_names %}
+                <option value="{{ coluna }}">{{ coluna }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filter_operator">Operador:</label>
+            <select class="form-control" id="filter_operator" name="filter_operator">
+                <option value="==">Igual a</option>
+                <option value="!=">Diferente de</option>
+                <option value="<">Menor que</option>
+                <option value="<=">Menor ou igual a</option>
+                <option value=">">Maior que</option>
+                <option value=">=">Maior ou igual a</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filter_value">Valor:</label>
+            <input type="text" class="form-control" id="filter_value" name="filter_value" placeholder="Insira o valor...">
+        </div>
+        <div class="form-group">
+            <label for="comment">Comentário (Opcional):</label>
+            <input type="text" class="form-control" id="comment" name="comment" placeholder="Adicione um comentário..."></input>
+        </div>
+        <button type="submit" class="btn btn-danger">Remover Linhas Filtradas</button>
+    </form>
+    
+
     {% if table %}
     <div class="mt-5">
         <h2>Tabela:</h2>

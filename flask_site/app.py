@@ -128,7 +128,7 @@ def remove_columns():
     history.write(table_html + " </div>")
     history.write('</div>')
     history.close()
-
+    """ 
     complete_history=load_history_pdf(app,temp=True)
     complete_history.write("<a>"+formatted_time + "Removed columns: " + str(columns_to_remove) + "\n</a>\n")
     full_table_html = get_table(df[columns_to_remove], request, 0, df.shape[0])
@@ -139,7 +139,7 @@ def remove_columns():
     complete_history.write(full_table_html )
     complete_history.write('</div>')
     complete_history.close()
-
+    """
     df.drop(columns=columns_to_remove, inplace=True, errors='raise')
     df.sort_index(inplace=True)
 
@@ -199,7 +199,7 @@ def remove_rows():
         history.write('</div>')
         history.close()
 
-
+        """ 
 
         complete_history=load_history_pdf(app,temp=True)
         complete_history.write("<a>"+formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a>\n")
@@ -211,7 +211,7 @@ def remove_rows():
         complete_history.write(full_table_html )
         complete_history.write('</div>')
         complete_history.close()
-
+        """
         df.drop(df.index[start_row:end_row + 1], inplace=True)
         df.sort_index(inplace=True)
 
@@ -257,6 +257,7 @@ def remove_nulls():
     history.write('</div>')
     history.close()
 
+    """
     complete_history=load_history_pdf(app,temp=True)
     complete_history.write("<a>"+formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n</a>\n")
     full_table_html = get_table(removed, request, 0, removed.shape[0] + 1, reset_index=False)
@@ -266,7 +267,8 @@ def remove_nulls():
     complete_history.write('<div class="table-responsive">')
     complete_history.write(full_table_html )
     complete_history.write('</div>')
-    complete_history.close()
+    complete_history.close() 
+    """
 
 
     df.dropna(subset=columns_to_remove, inplace=True)
@@ -320,7 +322,7 @@ def remove_query():
 
 
 
-    
+    """     
     complete_history=load_history_pdf(app,temp=True)
     complete_history.write("<a>"+formatted_time + "Removed by query:" + query_str+ "\n</a>\n")
     full_table_html = get_table(rows_to_drop, request, 0, rows_to_drop.shape[0] + 1, reset_index=False)
@@ -331,7 +333,7 @@ def remove_query():
     complete_history.write(full_table_html )
     complete_history.write('</div>')
     complete_history.close()
-
+    """
     
     df.drop(index=rows_to_drop.index, inplace=True)
     df.sort_index(inplace=True)
@@ -349,7 +351,68 @@ def remove_query():
 
     return redirect(url_for('clean_data'))
 
-from xhtml2pdf import pisa
+@app.route('/remove_filtered_rows', methods=['POST'])
+def remove_filtered_rows():
+    filter_column = request.form.get('filter_column')
+    filter_operator = request.form.get('filter_operator')
+    filter_value = request.form.get('filter_value')
+    comment = request.form.get('comment')
+    if comment:
+        comment = "Comentário: " + comment 
+
+    file_name = session['selected_file']
+    dict_sheet_names = session['sheet_names']
+    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    df = load_df(app)
+
+    # Monta a string de filtro com base no operador
+    query_str = f"{filter_column} {filter_operator} {filter_value}"
+    rows_to_drop = df.query(query_str)
+    table_html = get_table(rows_to_drop, request, 0, 100)
+
+    try:
+        # Executa a query
+        #rows_to_drop = df.query(query_str)
+        num_lines = "Remoção de "+str(rows_to_drop.shape[0])+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-rows_to_drop.shape[0]) + " linhas"
+        current_time = datetime.now()
+        formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+        id = re.sub(r'\W+', '_', formatted_time)
+        
+
+        # Salva histórico
+        history = load_history(app, temp=True)
+        history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+        history.write(formatted_time + f"Removed rows by filter on {filter_column} {filter_operator} {filter_value}\n</a></pre>\n")
+        history.write(f'<div id="{id}" class="collapse">')
+        history.write(f'<p>{num_lines}</p>')
+        
+        if comment:
+            history.write(f'<p>{comment}</p>')
+        history.write('<div class="table-responsive">')
+        history.write(table_html + " </div></div>")
+        history.close()
+
+        df.drop(index=rows_to_drop.index, inplace=True)
+        df.sort_index(inplace=True)
+
+        # Salva DataFrame modificado
+        if file_name.endswith('.csv'):
+            df.to_csv(file_path,index=False)
+        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+            selected_sheet=session['selected_sheet']
+            file_root, _ = os.path.splitext(file_name)
+            df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+
+        elif file_name.endswith('.xlsx'):
+            df.to_excel(file_path,index=False)
+        return redirect(url_for('clean_data'))
+
+    except Exception as e:
+        # Aqui você pode adicionar o tratamento de erros se necessário
+        return redirect(url_for('clean_data', error=f'Erro ao remover linhas: {str(e)}'))
+
+
+""" from xhtml2pdf import pisa
 @app.route('/export_pdf', methods=['GET'])
 def export_pdf():
     file_name = session['selected_file']
@@ -381,7 +444,7 @@ def export_pdf():
         # Write the PDF content to the file
         pdf_file.write(pdf_output.getvalue())
     
-    return send_file(pdf_path, as_attachment=True)
+    return send_file(pdf_path, as_attachment=True) """
 
 
 
@@ -486,45 +549,47 @@ def download_plot():
 #da erro se tentar aplicar mudanças sem ter
 @app.route('/apply_file_changes', methods=['GET'])
 def apply_file_changes():
-    file_name = session['selected_file']
-    dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
-    df=load_df(app)
-    if df is None:
-        df = pd.DataFrame()
-    temp_history=load_history(app,"r", temp=True)
-    content = temp_history.read()
-    temp_history.close()
-    temp_history=load_history(app,"w", temp=True)
-    temp_history.close()
+    try:
+        file_name = session['selected_file']
+        dict_sheet_names = session['sheet_names']
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+        df=load_df(app)
+        if df is None:
+            df = pd.DataFrame()
+        temp_history=load_history(app,"r", temp=True)
+        content = temp_history.read()
+        temp_history.close()
+        temp_history=load_history(app,"w", temp=True)
+        temp_history.close()
 
-    history=load_history(app,"a", temp=False)
-    history.write(content)
-    history.close()
-
-
-
-        
-    temp_history_pdf=load_history_pdf(app,"r", temp=True)
-    content_pdf = temp_history_pdf.read()
-    temp_history_pdf.close()
-    temp_history_pdf=load_history_pdf(app,"w", temp=True)
-    temp_history_pdf.close()
-
-    history_pdf=load_history_pdf(app,"a", temp=False)
-    history_pdf.write(content_pdf)
-    history_pdf.close()
+        history=load_history(app,"a", temp=False)
+        history.write(content)
+        history.close()
 
 
-    if file_name.endswith('.csv'):
-        df.to_csv(file_path,index=False)
-    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-        selected_sheet=session['selected_sheet']
-        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            df.to_excel(writer, sheet_name=selected_sheet, index=False)
-    elif file_name.endswith('.xlsx'):
-        df.to_excel(file_path,index=False)
-    return redirect(request.referrer or '/')
+
+        """    
+        temp_history_pdf=load_history_pdf(app,"r", temp=True)
+        content_pdf = temp_history_pdf.read()
+        temp_history_pdf.close()
+        temp_history_pdf=load_history_pdf(app,"w", temp=True)
+        temp_history_pdf.close()
+        history_pdf=load_history_pdf(app,"a", temp=False)
+        history_pdf.write(content_pdf)
+        history_pdf.close() 
+        """
+
+
+        if file_name.endswith('.csv'):
+            df.to_csv(file_path,index=False)
+        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
+            selected_sheet=session['selected_sheet']
+            with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name=selected_sheet, index=False)
+        elif file_name.endswith('.xlsx'):
+            df.to_excel(file_path,index=False)
+    finally:
+        return redirect(request.referrer or '/')
 
 
 @app.route('/discard_file_changes', methods=['GET'])
