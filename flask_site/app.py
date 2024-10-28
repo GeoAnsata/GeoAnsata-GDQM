@@ -25,6 +25,7 @@ def init_session_vars():
     session['sheet_names'] = {}
     session['selected_file']=''
     session['selected_sheet']=''
+    session['filters'] = [] 
 
 
 @app.route('/upload_file', methods=['POST'])
@@ -557,47 +558,78 @@ def upload():
         session['selected_sheet']=''
     return render_template('upload.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
-@app.route('/display')
+@app.route('/display', methods=['GET', 'POST'])
 def display():
     try:
-        # Carrega o DataFrame
         df = load_df(app)
-        
-        # Define os nomes das colunas para o dropdown
         column_names = df.columns.tolist()
         
-        # Captura os parâmetros de paginação e filtragem da URL
+        # Captura os parâmetros de paginação
         start = request.args.get('start', default=0, type=int)
         lines_by_page = request.args.get('lines_by_page', default=100, type=int)
         
-        # Captura os parâmetros de filtro
-        filter_column = request.args.get('filter_column')
-        filter_operator = request.args.get('filter_operator')
-        filter_value = request.args.get('filter_value')
+        if request.method == 'POST':
+            filter_column = request.form.get('filter_column')
+            filter_operator = request.form.get('filter_operator')
+            filter_value = request.form.get('filter_value')
+            
+            if filter_column and filter_operator and filter_value:
+                # Append the new filter to the existing list of filters
+                session['filters'].append({
+                    'column': filter_column,
+                    'operator': filter_operator,
+                    'value': filter_value
+                })
+                session.modified = True 
+        # Remover filtro específico
+        if 'remove_filter' in request.args:
+            filter_index = int(request.args.get('remove_filter'))
+            session['filters'].pop(filter_index)
+            session.modified = True
+
+        # Limpar todos os filtros
+        if 'clear_filters' in request.args:
+            session['filters'] = []
+            session.modified = True
+
+
+        # Definir operador de combinação dos filtros (AND/OR)
+        filter_logic = request.args.get('filter_logic', 'and')
         
-        # Aplica o filtro ao DataFrame, se todos os parâmetros de filtro estiverem presentes
-        if filter_column and filter_operator and filter_value:
+        # Aplica os filtros ao DataFrame
+        for filter_item in session['filters']:
+            col = filter_item['column']
+            op = filter_item['operator']
+            val = filter_item['value']
+            
             try:
-                filter_value = float(filter_value) if filter_value.replace('.', '', 1).isdigit() else filter_value
-                if filter_operator == "equals":
-                    df = df[df[filter_column] == filter_value]
-                elif filter_operator == "not_equals":
-                    df = df[df[filter_column] != filter_value]
-                elif filter_operator == "greater_than":
-                    df = df[pd.to_numeric(df[filter_column], errors='coerce') > filter_value]
-                elif filter_operator == "less_than":
-                    df = df[pd.to_numeric(df[filter_column], errors='coerce') < filter_value]
-                elif filter_operator == "greater_equal":
-                    df = df[pd.to_numeric(df[filter_column], errors='coerce') >= filter_value]
-                elif filter_operator == "less_equal":
-                    df = df[pd.to_numeric(df[filter_column], errors='coerce') <= filter_value]
+                val = float(val) if val.replace('.', '', 1).isdigit() else val
+                if op == "equals":
+                    condition = df[col] == val
+                elif op == "not_equals":
+                    condition = df[col] != val
+                elif op == "greater_than":
+                    condition = pd.to_numeric(df[col], errors='coerce') > val
+                elif op == "less_than":
+                    condition = pd.to_numeric(df[col], errors='coerce') < val
+                elif op == "greater_equal":
+                    condition = pd.to_numeric(df[col], errors='coerce') >= val
+                elif op == "less_equal":
+                    condition = pd.to_numeric(df[col], errors='coerce') <= val
+
+                # Aplica o filtro como AND ou OR
+                if filter_logic == 'and':
+                    df = df[condition]
+                else:
+                    df = pd.concat([df[condition], df[~condition]]).drop_duplicates()
+
             except ValueError:
-                pass  # Ignore filtering if conversion fails for non-numeric comparisons
-        
-        # Gera a tabela HTML com base nos dados filtrados e na paginação
+                pass  # Ignorar se houver erro de tipo
+
+        # Gera a tabela HTML com os dados filtrados e paginação
         table_html = get_table(df, request, start, lines_by_page)
         
-        # Renderiza o template com a tabela e os parâmetros
+        # Renderiza o template com a tabela, filtros e opções
         return render_template(
             'display.html',
             table=table_html,
@@ -607,7 +639,9 @@ def display():
             start=start,
             lines_by_page=lines_by_page,
             num_lines=df.shape[0],
-            column_names=column_names  # Passa os nomes das colunas para o template
+            column_names=column_names,
+            filters=session['filters'],
+            filter_logic=filter_logic
         )
     except Exception as e:
         print(f"Erro ao exibir a tabela: {e}")
@@ -620,7 +654,9 @@ def display():
             start=0,
             lines_by_page=100,
             num_lines=0,
-            column_names=[]
+            column_names=[],
+            filters=[],
+            filter_logic='and'
         )
 
 @app.route('/download_page')
