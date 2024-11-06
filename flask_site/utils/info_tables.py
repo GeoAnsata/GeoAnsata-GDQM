@@ -75,6 +75,89 @@ def criar_data_dict(dataset):
     return tabela
 
 
+def gerar_resumo_tabela(tabela):
+    colunas = []
+    tipos_dados = []
+    valores_unicos = []
+    listas_escolhas = []
+    distribuicoes = []
+    
+    for coluna in tabela.columns:
+        # Nome da coluna
+        colunas.append(coluna)
+        
+        # Tipo de dado
+        tipos_dados.append(tabela[coluna].dtype)
+        
+        # Valores únicos e contagem
+        valores_unicos.append(tabela[coluna].nunique())
+        lista_escolhas = ", ".join(map(str, tabela[coluna].unique()[:10])) if tabela[coluna].nunique() <= 10 else "–"
+        listas_escolhas.append(lista_escolhas)
+        
+        # Distribuição (incluindo NaN)
+        distribuicao = tabela[coluna].value_counts(dropna=False, normalize=True) * 100
+        qtd_distribuicao = tabela[coluna].value_counts(dropna=False)
+        
+        distrib_resumo = "\n".join([
+            f"{valor if pd.notna(valor) else 'NaN'}: {qtd} ({pct:.1f}%)"
+            for valor, qtd, pct in zip(distribuicao.index, qtd_distribuicao, distribuicao)
+        ]) if tabela[coluna].nunique() <= 10 else "–"
+        
+        distribuicoes.append(distrib_resumo)
+    
+    # Criar DataFrame com o resumo
+    resumo_df = pd.DataFrame({
+        "Coluna": colunas,
+        "Tipo do dado": tipos_dados,
+        "Valores únicos": valores_unicos,
+        "Lista de escolhas": listas_escolhas,
+        "Distribuição (Qtd., %)": distribuicoes
+    })
+    
+    return resumo_df
+
+
+def gerar_estatisticas_tabela(tabela):
+    resumo = {
+        "Variável": [],
+        "n": [],
+        "min": [],
+        "25%": [],
+        "50%": [],
+        "média": [],
+        "75%": [],
+        "máx": [],
+        "std": []
+    }
+    
+    for coluna in tabela.columns:
+        if pd.api.types.is_numeric_dtype(tabela[coluna]):
+            resumo["Variável"].append(coluna)
+            resumo["n"].append(tabela[coluna].count())
+            resumo["min"].append(tabela[coluna].min())
+            resumo["25%"].append(tabela[coluna].quantile(0.25))
+            resumo["50%"].append(tabela[coluna].median())
+            resumo["média"].append(tabela[coluna].mean())
+            resumo["75%"].append(tabela[coluna].quantile(0.75))
+            resumo["máx"].append(tabela[coluna].max())
+            resumo["std"].append(tabela[coluna].std())
+        else:
+            # Preencher com valores nulos se a coluna não for numérica
+            resumo["Variável"].append(coluna)
+            resumo["n"].append(tabela[coluna].count())
+            resumo["min"].append("–")
+            resumo["25%"].append("–")
+            resumo["50%"].append("–")
+            resumo["média"].append("–")
+            resumo["75%"].append("–")
+            resumo["máx"].append("–")
+            resumo["std"].append("–")
+    
+    # Criar DataFrame com o resumo
+    resumo_df = pd.DataFrame(resumo)
+    
+    return resumo_df
+
 def criar_tabela_continuo(dataset):
     estatisticas = {
         'Nomes das Colunas': [],

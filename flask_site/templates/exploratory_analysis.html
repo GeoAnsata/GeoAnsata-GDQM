@@ -56,33 +56,121 @@ block content %}
   <div class="mt-5">
     <h2>Tabela:</h2>
     <div class="table-responsive">{{ table | safe }}</div>
-    <a href="{{ url_for('download_csv') }}" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
+    <a href="#" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
   </div>
   {% endif %}
 
-  <form action="/plot_graph" method="POST" class="mt-3" id="plotGraphForm">
+  <br>
+  <form action="/completude_graph" method="GET" class="mt-3" id="colunaForm_dict">
     <div class="form-group">
-      <label for="x_column">Coluna X:</label>
-      <select class="form-control" id="x_column" name="x_column">
-        {% for coluna in column_names %}
-        <option value="{{ coluna }}">{{ coluna }}</option>
-        {% endfor %}
-      </select>
-      <label for="y_column">Coluna Y:</label>
-      <select class="form-control" id="y_column" name="y_column">
-        {% for coluna in column_names %}
-        <option value="{{ coluna }}">{{ coluna }}</option>
-        {% endfor %}
-      </select>
+      <label>Selecione as colunas:</label><br />
+      {% for coluna in column_names %}
+      <div class="form-check form-check-inline">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          name="colunas"
+          value="{{ coluna }}"
+          id="completude_{{ coluna }}"
+        />
+        <label class="form-check-label" for="completude_{{ coluna }}"
+          >{{ coluna }}</label
+        >
+      </div>
+      {% endfor %}
     </div>
-    <button type="submit" class="btn btn-primary">Plotar Gráfico</button>
+    <button type="submit" class="btn btn-primary">
+      Gerar gráfico de completude
+    </button>
   </form>
+
+  <br>
+  <form id="chart-form" method="post" action="{{ url_for('plot_graph') }}">
+    <div>
+        <!-- Campos para definir as colunas e suas unidades -->
+        <label for="x_column">Coluna X:</label>
+        <select id="x_column" name="x_column">
+            <option value="">Escolha uma coluna</option>
+            {% for coluna in column_names %}
+                <option value="{{ coluna }}">{{ coluna }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="x_unit">Unidade para X (opcional):</label>
+        <input type="text" id="x_unit" name="x_unit" placeholder="Ex: metros"><br>
+
+        <label for="y_column">Coluna Y:</label>
+        <select id="y_column" name="y_column">
+            <option value="">Escolha uma coluna</option>
+            {% for coluna in column_names %}
+                <option value="{{ coluna }}">{{ coluna }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="y_unit">Unidade para Y (opcional):</label>
+        <input type="text" id="y_unit" name="y_unit" placeholder="Ex: segundos"><br>
+
+        <!-- Seleção do tipo de gráfico -->
+        <label for="chart_type">Tipo de Gráfico:</label>
+        <select id="chart_type" name="chart_type">
+            <option value="line">Linha</option>
+            <option value="scatter">Dispersão</option>
+            <option value="bar">Barra</option>
+            <option value="histogram">Histograma</option>
+        </select><br>
+
+        <!-- Tamanho da imagem com opção de unidade de medida -->
+        <label for="image_size">Tamanho da Imagem:</label>
+        <input type="text" id="image_size" name="image_size" value="10x6" required>
+        
+        <label for="size_unit">Unidade de Medida:</label>
+        <select id="size_unit" name="size_unit">
+            <option value="in">Polegadas</option>
+            <option value="cm">Centímetros</option>
+        </select><br>
+
+        <label for="point_color">Cor dos Pontos:</label>
+        <input type="color" id="point_color" name="point_color" value="#ff0000"><br>
+
+        <button type="submit">Criar Gráfico</button>
+    </div>
+</form>
+
+<br>
   {% if image %}
   <h3>Generated Plot:</h3>
   <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
   <a href="{{ url_for('download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Plot</a>
+    <!-- Button to trigger the add plot to history function -->
+  <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Add Plot to History</button>
+
   {% endif %}
+  {% include 'includes/plothistorymodal.html' %}
 {% endif %}
 </div>
+<br>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("addPlotToHistoryButton").addEventListener("click", function (event) {
+        event.preventDefault();
+        
+        fetch("/add_plot_to_history")
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    // Show success modal
+                    new bootstrap.Modal(document.getElementById('successModal')).show();
+                } else {
+                    // Show error modal if there's an error
+                    new bootstrap.Modal(document.getElementById('errorModal')).show();
+                }
+            })
+            .catch(error => {
+                // Show error modal in case of any fetch error
+                new bootstrap.Modal(document.getElementById('errorModal')).show();
+                console.error("Error:", error);
+            });
+    });
+});
+  </script>
 {% endblock %}
-

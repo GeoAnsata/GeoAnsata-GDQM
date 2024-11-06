@@ -1,13 +1,18 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, send_file, session,jsonify, json
 from utils.clear_directory import clear_directory
 from utils.info_tables import *
 from utils.load_df import *
+import seaborn as sns
 import tempfile
 import os
 import re
 import pandas as pd
 import shutil
-from datetime import datetime
+from datetime import *
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+import numpy as np
 
 
 app = Flask(__name__)
@@ -26,6 +31,8 @@ def init_session_vars():
     session['selected_file']=''
     session['selected_sheet']=''
     session['filters'] = [] 
+    session['filter_logic']='and'
+    session['image_filename']=''
 
 
 @app.route('/upload_file', methods=['POST'])
@@ -128,18 +135,14 @@ def remove_columns():
     history.write(table_html + " </div>")
     history.write('</div>')
     history.close()
-    """ 
+    
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write("<a>"+formatted_time + "Removed columns: " + str(columns_to_remove) + "\n</a>\n")
-    full_table_html = get_table(df[columns_to_remove], request, 0, df.shape[0])
+    complete_history.write(formatted_time + "Removed columns: " + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
-    complete_history.write('<div class="table-responsive">')
-    complete_history.write(full_table_html )
-    complete_history.write('</div>')
     complete_history.close()
-    """
+    
     df.drop(columns=columns_to_remove, inplace=True, errors='raise')
     df.sort_index(inplace=True)
 
@@ -199,19 +202,15 @@ def remove_rows():
         history.write('</div>')
         history.close()
 
-        """ 
+        
 
         complete_history=load_history_pdf(app,temp=True)
-        complete_history.write("<a>"+formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a>\n")
-        full_table_html = get_table(df, request, start_row, end_row + 1, reset_index=False)
+        complete_history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n")
         complete_history.write(f'<p>{num_lines}</p>')
         if(comment):
             complete_history.write(f'<p>{comment}</p>')
-        complete_history.write('<div class="table-responsive">')
-        complete_history.write(full_table_html )
-        complete_history.write('</div>')
         complete_history.close()
-        """
+        
         df.drop(df.index[start_row:end_row + 1], inplace=True)
         df.sort_index(inplace=True)
 
@@ -257,18 +256,12 @@ def remove_nulls():
     history.write('</div>')
     history.close()
 
-    """
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write("<a>"+formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n</a>\n")
-    full_table_html = get_table(removed, request, 0, removed.shape[0] + 1, reset_index=False)
+    complete_history.write(formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
-    complete_history.write('<div class="table-responsive">')
-    complete_history.write(full_table_html )
-    complete_history.write('</div>')
     complete_history.close() 
-    """
 
 
     df.dropna(subset=columns_to_remove, inplace=True)
@@ -322,18 +315,14 @@ def remove_query():
 
 
 
-    """     
+        
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write("<a>"+formatted_time + "Removed by query:" + query_str+ "\n</a>\n")
-    full_table_html = get_table(rows_to_drop, request, 0, rows_to_drop.shape[0] + 1, reset_index=False)
+    complete_history.write(formatted_time + "Removed by query:" + query_str+ "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
-    complete_history.write('<div class="table-responsive">')
-    complete_history.write(full_table_html )
-    complete_history.write('</div>')
     complete_history.close()
-    """
+    
     
     df.drop(index=rows_to_drop.index, inplace=True)
     df.sort_index(inplace=True)
@@ -351,68 +340,116 @@ def remove_query():
 
     return redirect(url_for('clean_data'))
 
-@app.route('/remove_filtered_rows', methods=['POST'])
-def remove_filtered_rows():
-    filter_column = request.form.get('filter_column')
-    filter_operator = request.form.get('filter_operator')
-    filter_value = request.form.get('filter_value')
+@app.route('/apply_filters', methods=['POST'])
+def apply_filters():
+    # Carrega os filtros recebidos como JSON
+    filters = request.form.getlist('filters[]')
+    filter_logic = request.form.get('filter_logic', 'and')
     comment = request.form.get('comment')
-    if comment:
-        comment = "Comentário: " + comment 
-
+    if(comment):
+        comment="Comentário: " + comment 
     file_name = session['selected_file']
-    dict_sheet_names = session['sheet_names']
     file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    dict_sheet_names = session['sheet_names']
+    
+    applied_filters = []
+
+    # Monta a string de consulta para o filtro
+    query_conditions = []
+    for filter_data in filters:
+        filter_dict = json.loads(filter_data)  # Converte JSON para dicionário
+        column = filter_dict.get('column')
+        operator = filter_dict.get('operator')
+        value = filter_dict.get('value')
+
+        # Formata a condição com base no operador
+        try:
+            numeric_value = float(value)
+            is_numeric = True
+        except ValueError:
+            is_numeric = False
+
+        # Build condition based on the operator
+        if operator == "equals":
+            condition = f"({column} == '{value}')" if not is_numeric else f"({column} == {numeric_value})"
+        elif operator == "not_equals":
+            condition = f"({column} != '{value}')" if not is_numeric else f"({column} != {numeric_value})"
+        elif operator == "greater_than":
+            condition = f"({column} > '{value}')" if not is_numeric else f"({column} > {numeric_value})"
+        elif operator == "less_than":
+            condition = f"({column} < '{value}')" if not is_numeric else f"({column} < {numeric_value})"
+        elif operator == "greater_than_or_equal":
+            condition = f"({column} >= '{value}')" if not is_numeric else f"({column} >= {numeric_value})"
+        elif operator == "less_than_or_equal":
+            condition = f"({column} <= '{value}')" if not is_numeric else f"({column} <= {numeric_value})"
+        
+        
+        query_conditions.append(condition)
+        applied_filters.append({'column': column, 'operator': operator, 'value': value})
+    print(applied_filters)
+    
+    # Constrói a string de consulta usando o operador lógico selecionado
+    query_string = f" {filter_logic} ".join(query_conditions)
+
+
+    # Aplique a consulta ao DataFrame usando df.query
     df = load_df(app)
 
-    # Monta a string de filtro com base no operador
-    query_str = f"{filter_column} {filter_operator} {filter_value}"
-    rows_to_drop = df.query(query_str)
+    action = request.form.get('action')
+
+    if action == 'remove_not_selected':
+        # To remove items not selected, you can use the negation of the condition
+        query_string= "not ( " + query_string + " )"
+    rows_to_drop=df.query(query_string)
+
+    # Renderiza a página com os dados filtrados
     table_html = get_table(rows_to_drop, request, 0, 100)
+    num_lines = f"Remoção de {rows_to_drop.shape[0]} linhas de {df.shape[0]}, mantendo {df.shape[0] - rows_to_drop.shape[0]} linhas"
+    current_time = datetime.now()
+    formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
+    id = re.sub(r'\W+', '_', formatted_time)
 
-    try:
-        # Executa a query
-        #rows_to_drop = df.query(query_str)
-        num_lines = "Remoção de "+str(rows_to_drop.shape[0])+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-rows_to_drop.shape[0]) + " linhas"
-        current_time = datetime.now()
-        formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
-        id = re.sub(r'\W+', '_', formatted_time)
-        
+    # Salva o histórico
+    history = load_history(app, temp=True)
+    history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
+    history.write(formatted_time + "Removed by filters:" + query_string + "\n</a></pre>\n")
+    history.write(f'<div id="{id}" class="collapse">')
+    history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        history.write(f'<p>{comment}</p>')
+    history.write('<div class="table-responsive">')
+    history.write(table_html + " </div>")
+    history.write('</div>')
+    history.close()
 
-        # Salva histórico
-        history = load_history(app, temp=True)
-        history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-        history.write(formatted_time + f"Removed rows by filter on {filter_column} {filter_operator} {filter_value}\n</a></pre>\n")
-        history.write(f'<div id="{id}" class="collapse">')
-        history.write(f'<p>{num_lines}</p>')
-        
-        if comment:
-            history.write(f'<p>{comment}</p>')
-        history.write('<div class="table-responsive">')
-        history.write(table_html + " </div></div>")
-        history.close()
+    complete_history = load_history_pdf(app, temp=True)
+    complete_history.write(formatted_time + "Removed by filters:" + str(applied_filters) + "\n")
+    complete_history.write(f'<p>{num_lines}</p>')
+    if(comment):
+        complete_history.write(f'<p>{comment}</p>')
+    complete_history.close()
 
-        df.drop(index=rows_to_drop.index, inplace=True)
-        df.sort_index(inplace=True)
+    # Remove as linhas selecionadas do DataFrame original
+    df.drop(index=rows_to_drop.index, inplace=True)
+    df.sort_index(inplace=True)
 
-        # Salva DataFrame modificado
-        if file_name.endswith('.csv'):
-            df.to_csv(file_path,index=False)
-        elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-            selected_sheet=session['selected_sheet']
-            file_root, _ = os.path.splitext(file_name)
-            df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+    # Salva o DataFrame modificado
+    if file_name.endswith('.csv'):
+        df.to_csv(file_path, index=False)
+    elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name]) > 0):
+        selected_sheet = session['selected_sheet']
+        file_root, _ = os.path.splitext(file_name)
+        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], f"{file_root}_{selected_sheet}.csv"), index=False)
+    elif file_name.endswith('.xlsx'):
+        df.to_excel(file_path, index=False)
 
-        elif file_name.endswith('.xlsx'):
-            df.to_excel(file_path,index=False)
-        return redirect(url_for('clean_data'))
-
-    except Exception as e:
-        # Aqui você pode adicionar o tratamento de erros se necessário
-        return redirect(url_for('clean_data', error=f'Erro ao remover linhas: {str(e)}'))
+    return redirect(url_for('clean_data'))
 
 
-""" from xhtml2pdf import pisa
+
+
+
+from xhtml2pdf import pisa
 @app.route('/export_pdf', methods=['GET'])
 def export_pdf():
     file_name = session['selected_file']
@@ -444,7 +481,7 @@ def export_pdf():
         # Write the PDF content to the file
         pdf_file.write(pdf_output.getvalue())
     
-    return send_file(pdf_path, as_attachment=True) """
+    return send_file(pdf_path, as_attachment=True)
 
 
 
@@ -452,7 +489,7 @@ def export_pdf():
 def criar_tabela_continuo_route():
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(app)
-    tabela_continua = criar_tabela_continuo(df[colunas_selecionadas])
+    tabela_continua = gerar_estatisticas_tabela(df[colunas_selecionadas])
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()
@@ -475,7 +512,8 @@ def criar_tabela_continuo_route():
 def criar_data_dict_route():
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(app)
-    data_dict = criar_data_dict(df[colunas_selecionadas])
+    #data_dict = criar_data_dict(df[colunas_selecionadas])
+    data_dict = gerar_resumo_tabela(df[colunas_selecionadas])
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()
@@ -493,6 +531,7 @@ def criar_data_dict_route():
 
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+
 @app.route('/download_csv', methods=['GET'])
 def download_csv():
     file_root, _ = os.path.splitext(session['selected_file'])
@@ -501,25 +540,82 @@ def download_csv():
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_exploratory_table.csv", mimetype='text/csv')
     return "No table to download", 400
 
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
+
+@app.route('/completude_graph', methods=['GET'])
+def completude_graph():
+    #NAO É POSSIVEL ADICIONAR AO RELATORIO POR ENQUANTO
+    colunas_selecionadas = request.args.getlist('colunas')
+    df = load_df(app)
+    column_names = df.columns.tolist() if df is not None else None
+    #data_dict = criar_data_dict(df[colunas_selecionadas])
+
+    plt.figure(figsize=(10, 6))  # Ajuste o tamanho conforme necessário
+    sns.heatmap(df[colunas_selecionadas].transpose().isnull(), cbar=False, cmap=["purple", "yellow"], linecolor='white')
+
+    plt.xlabel(f"{df[colunas_selecionadas].shape[0]} linhas")
+    plt.ylabel(f"{df[colunas_selecionadas].shape[1]} colunas")
+
+    # Set the y-tick positions at row boundaries (between rows)
+    plt.gca().set_yticks(np.arange(0, df[colunas_selecionadas].shape[1]))  # Gridlines between rows
+
+    # Set the y-tick labels to column names and shift their positions to the middle
+    plt.gca().set_yticklabels(df[colunas_selecionadas].columns)
+
+    # Add horizontal gridlines at row boundaries (between rows)
+    plt.grid(axis='y', color='white', linewidth=1, linestyle='-', zorder=0)
+
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
+    
+    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
 
 @app.route('/plot_graph', methods=['POST'])
 def plot_graph():
     x_column = request.form['x_column']
     y_column = request.form['y_column']
+    chart_type = request.form['chart_type']
+    image_size = request.form['image_size'].split('x')  # Separar largura e altura
+    width, height = int(image_size[0]), int(image_size[1])
+    point_color = request.form['point_color']
+    
+    # Obter as unidades de medida para X e Y, se fornecidas
+    x_unit = request.form.get('x_unit', '')  # Unidade para X (opcional)
+    y_unit = request.form.get('y_unit', '')  # Unidade para Y (opcional)
 
     df = load_df(app)
-    column_names=None
-    if(df is not None):
-        column_names = df.columns.tolist()
+    column_names = df.columns.tolist() if df is not None else None
+    x_min, x_max = min(df[x_column]), max(df[x_column])
+    plt.figure(figsize=(width, height))
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(df[x_column], df[y_column], marker='o', linestyle='')
-    plt.title(f'Gráfico de {y_column} vs {x_column}')
-    plt.xlabel(x_column)
-    plt.ylabel(y_column)
+    # Verifica o tipo de gráfico e plota
+    if chart_type == 'line':
+        plt.plot(df[x_column], df[y_column], marker='o', color=point_color, linestyle='-')
+        plt.xlim(x_min, x_max)
+        plt.title(f'Gráfico de Linha de {y_column} vs {x_column}')
+        plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
+        plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
+    elif chart_type == 'scatter':
+        plt.scatter(df[x_column], df[y_column], color=point_color)
+        plt.xlim(x_min, x_max)
+        plt.title(f'Gráfico de Dispersão {y_column} vs {x_column}')
+        plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
+        plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
+    elif chart_type == 'bar':
+        plt.bar(df[x_column], df[y_column], color=point_color)
+        plt.xlim(x_min, x_max)
+        plt.title(f'Gráfico de Barras {y_column} vs {x_column}')
+        plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
+        plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
+    elif chart_type == 'histogram':
+        plt.title(f'Histograma de {x_column}')
+        plt.xlim(x_min, x_max)
+        plt.hist(df[x_column], bins=30, color=point_color)
+        plt.ylabel(f"{x_column} ({x_unit})" if x_unit else x_column)
+
     plt.grid(True)
     plt.tight_layout()
 
@@ -530,21 +626,44 @@ def plot_graph():
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
 
     file_root, _ = os.path.splitext(session['selected_file'])
-    image_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_plot.png")
+    image_filename = os.path.join(app.config['TEMP_FOLDER'], str(datetime.now().strftime("%d%m%Y%H%M%S")) + str(chart_type) + "_plot.png")
+    session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
-
-
+    #return redirect(url_for('exploratory_analysis', image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"]))
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/download_plot', methods=['GET'])
 def download_plot():
     file_root, _ = os.path.splitext(session['selected_file'])
-    temp_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_plot.png")
+    temp_filename = session['image_filename']
     if temp_filename and os.path.exists(temp_filename):
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_plot.png", mimetype='png')
     return "No plot to download", 400
 
+
+@app.route('/add_plot_to_history', methods=['GET'])
+def add_plot_to_history():
+    print("AAAAAAA")
+    file_root, _ = os.path.splitext(session['selected_file'])
+    temp_filename = session['image_filename']
+    
+    if temp_filename and os.path.exists(temp_filename):
+        # Load complete history (for HTML storage)
+        complete_history = load_history_pdf(app, temp=True)
+
+        # Log the addition of the plot to the history
+        formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        complete_history.write(f'<p>{formatted_time} - Added plot image to history</p>')
+
+        # Include image in the HTML by adding an <img> tag
+        complete_history.write(f'<img src="{temp_filename}" alt="Plot Image" style="width:100%; max-width:600px;"/>')
+        complete_history.close()
+
+        # Return success response
+        return jsonify({"status": "success"}), 200
+    
+    return jsonify({"status": "error", "message": "No plot to add to history"}), 400
 
 #da erro se tentar aplicar mudanças sem ter
 @app.route('/apply_file_changes', methods=['GET'])
@@ -568,7 +687,7 @@ def apply_file_changes():
 
 
 
-        """    
+         
         temp_history_pdf=load_history_pdf(app,"r", temp=True)
         content_pdf = temp_history_pdf.read()
         temp_history_pdf.close()
@@ -577,7 +696,7 @@ def apply_file_changes():
         history_pdf=load_history_pdf(app,"a", temp=False)
         history_pdf.write(content_pdf)
         history_pdf.close() 
-        """
+        
 
 
         if file_name.endswith('.csv'):
@@ -589,7 +708,10 @@ def apply_file_changes():
         elif file_name.endswith('.xlsx'):
             df.to_excel(file_path,index=False)
     finally:
+        if request.referrer and request.referrer.endswith('/plot_graph'):
+            return redirect(url_for('exploratory_analysis'))
         return redirect(request.referrer or '/')
+    
 
 
 @app.route('/discard_file_changes', methods=['GET'])
@@ -728,7 +850,7 @@ def display():
 def download_page():
     return render_template('download.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
-@app.route('/clean_data')
+@app.route('/clean_data',  methods=['GET', 'POST'])
 def clean_data():
     try:
         df = load_df(app)
@@ -747,7 +869,9 @@ def clean_data():
                                selected_sheet=session["selected_sheet"],
                                start=start,
                                lines_by_page=lines_by_page,
-                               num_lines=df.shape[0])
+                               num_lines=df.shape[0],
+                               filters=session['filters'],
+                                filter_logic=session['filter_logic'])
     except:
         return render_template('clean_data.html',
                                 table=None,
@@ -757,7 +881,9 @@ def clean_data():
                                 selected_sheet=session["selected_sheet"], 
                                 start=0, 
                                 lines_by_page=100,
-                                num_lines=0)
+                                num_lines=0,
+                                filters=[],
+                                filter_logic='and')
 
 @app.route('/exploratory_analysis')
 def exploratory_analysis():

@@ -5,19 +5,11 @@
 {% block content %}
 <div class="container mt-5">
     <h2>History</h2>
-    <!-- <a href="{{ url_for('export_pdf') }}" class="btn btn-primary" id="generateHistoryPdf">Export History as PDF</a> -->
+    <a href="{{ url_for('export_pdf') }}" class="btn btn-primary" id="generateHistoryPdf">Export History as PDF</a>
     {% if file_history %}
     <div class="mt-5">
         {{ file_history|safe }} 
     </div>
     {% endif %}
 </div>
-<!--
-{% include 'includes/loadingmodal.html' %}
-<script>
-document.getElementById('generateHistoryPdf').addEventListener('click', function(event) {
-    $('#loadingModal').modal('show');
-});
-</script>
--->
 {% endblock %}

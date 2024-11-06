@@ -79,40 +79,65 @@
         </div>
         <button type="submit" class="btn btn-danger">Remover por Query</button>
     </form>
-
-    <form action="/remove_filtered_rows" method="POST" class="mt-3" id="removeFilteredRowsForm">
-        <div class="form-group">
-            <label for="filter_column">Selecione a coluna para o filtro:</label>
-            <select class="form-control" id="filter_column" name="filter_column">
-                <option value="">Selecione uma coluna</option>
+    <br>
+    <form id="filter-form" method="post" action="{{ url_for('apply_filters') }}">
+        <div>
+            <!-- Campos para adicionar novo filtro -->
+            <label for="filter_column">Coluna:</label>
+            <select id="filter_column" name="filter_column">
+                <option value="">Escolha uma coluna</option>
                 {% for coluna in column_names %}
-                <option value="{{ coluna }}">{{ coluna }}</option>
+                    <option value="{{ coluna }}">{{ coluna }}</option>
                 {% endfor %}
             </select>
-        </div>
-        <div class="form-group">
-            <label for="filter_operator">Operador:</label>
-            <select class="form-control" id="filter_operator" name="filter_operator">
-                <option value="==">Igual a</option>
-                <option value="!=">Diferente de</option>
-                <option value="<">Menor que</option>
-                <option value="<=">Menor ou igual a</option>
-                <option value=">">Maior que</option>
-                <option value=">=">Maior ou igual a</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="filter_value">Valor:</label>
-            <input type="text" class="form-control" id="filter_value" name="filter_value" placeholder="Insira o valor...">
-        </div>
-        <div class="form-group">
-            <label for="comment">Comentário (Opcional):</label>
-            <input type="text" class="form-control" id="comment" name="comment" placeholder="Adicione um comentário..."></input>
-        </div>
-        <button type="submit" class="btn btn-danger">Remover Linhas Filtradas</button>
-    </form>
     
+            <label for="filter_operator">Operador:</label>
+            <select id="filter_operator" name="filter_operator">
+                <option value="equals">Igual a</option>
+                <option value="not_equals">Diferente de</option>
+                <option value="greater_than">Maior que</option>
+                <option value="less_than">Menor que</option>
+                <option value="greater_than_or_equal">Maior ou igual a</option>
+                <option value="less_than_or_equal">Menor ou igual a</option>
+            </select>
+    
+            <label for="filter_value">Valor:</label>
+            <input type="text" id="filter_value" name="filter_value" placeholder="Digite um valor">
+    
+            <!-- Botão para adicionar filtro ao formulário -->
+            <button type="button" onclick="addFilter()">Adicionar Filtro</button>
+        </div>
+    
+        <!-- Seção de lógica de filtro (AND/OR) -->
+        <label>Lógica de Filtro:</label>
+        <select id="filter_logic" name="filter_logic" onchange="setFilterLogic(this.value)">
+            <option value="&" {% if filter_logic == '&' %}selected{% endif %}>E (AND)</option>
+            <option value="|" {% if filter_logic == '|' %}selected{% endif %}>OU (OR)</option>
+        </select>
+    
+        <!-- Campo oculto para armazenar a lógica de filtro selecionada -->
+        <input type="hidden" id="filter_logic_hidden" name="filter_logic" value="and">
+    
+        <!-- Lista de filtros atuais -->
+        <div id="filters-list" class="mt-3">
+            <h5>Filtros Atuais:</h5>
+            <ul id="filter-list">
+                <!-- Lista de filtros aplicados, clicáveis para remoção -->
+            </ul>
+        </div>
+    
+        <!-- Sessão para armazenar filtros em campos ocultos -->
+        <div id="filters-container"></div>
 
+        <div class="form-group">
+            <label for="comment">Comment (Optional):</label>
+            <input type="text" class="form-control" id="comment" name="comment" placeholder="Add a comment..."></input>
+        </div>
+        
+        <!-- Botão para enviar filtros ao backend -->
+        <button type="submit" name="action" value="remove_selected">Remover Itens Selecionados</button>
+        <button type="submit" name="action" value="remove_not_selected">Remover Itens Não Selecionados</button>
+    </form>
     {% if table %}
     <div class="mt-5">
         <h2>Tabela:</h2>
@@ -143,6 +168,9 @@
         </div>
     </div>
     {% endif %}
+    <br>
+    <br>
+    <br>
 </div>
 
 {% include 'includes/loadingmodal.html' %}
@@ -162,6 +190,7 @@
         pointer-events: none; /* Ensure icons don't capture clicks */
     }
 </style>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
 <script>
@@ -243,5 +272,60 @@ document.addEventListener("DOMContentLoaded", function() {
         checkboxes.forEach(checkbox => checkbox.checked = this.checked);
     });
 });
+
+function addFilter() {
+    // Obtenha os valores dos campos de filtro
+    const column = document.getElementById('filter_column').value;
+    const operator = document.getElementById('filter_operator').value;
+    const value = document.getElementById('filter_value').value;
+
+    // Verifique se todos os campos estão preenchidos
+    if (!column || !operator || !value) {
+        alert('Preencha todos os campos para adicionar um filtro.');
+        return;
+    }
+
+    // Crie um identificador único para o filtro
+    const filterId = `filter-${column}-${operator}-${value}`;
+
+    // Adicione um novo filtro à lista visível
+    const filterList = document.getElementById('filter-list');
+    const filterItem = document.createElement('li');
+    filterItem.textContent = `${column} ${operator} ${value}`;
+    filterItem.setAttribute('data-id', filterId);
+    filterItem.onclick = () => removeFilter(filterId);
+    filterList.appendChild(filterItem);
+
+    // Adicione um campo oculto para este filtro no formato JSON
+    const filtersContainer = document.getElementById('filters-container');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'filters[]'; // Usar `filters[]` permite que seja lido como lista no Flask
+    hiddenInput.value = JSON.stringify({ column, operator, value });
+    hiddenInput.id = filterId;
+    filtersContainer.appendChild(hiddenInput);
+
+    // Limpe os campos de entrada
+    document.getElementById('filter_column').value = '';
+    document.getElementById('filter_operator').value = 'equals';
+    document.getElementById('filter_value').value = '';
+}
+
+    function removeFilter(filterId) {
+        // Remova o filtro da lista visível
+        const filterList = document.getElementById('filter-list');
+        const filterItem = filterList.querySelector(`li[data-id="${filterId}"]`);
+        if (filterItem) filterList.removeChild(filterItem);
+
+        // Remova o filtro oculto do formulário
+        const filtersContainer = document.getElementById('filters-container');
+        const hiddenInput = document.getElementById(filterId);
+        if (hiddenInput) filtersContainer.removeChild(hiddenInput);
+    }
+
+    function setFilterLogic(logic) {
+        document.getElementById('filter_logic_hidden').value = logic;
+    }
 </script>
+
 {% endblock %}
