@@ -33,6 +33,7 @@ def init_session_vars():
     session['filters'] = [] 
     session['filter_logic']='and'
     session['image_filename']=''
+    session['table_html']=''
 
 
 @app.route('/upload_file', methods=['POST'])
@@ -458,10 +459,10 @@ def export_pdf():
     if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
         history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "_" + selected_sheet + "complete.html")
-        print(history_path)
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history' + selected_sheet + '.pdf')
     else:
         history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "complete.html")
-    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history.pdf')
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history' + file_root + '.pdf')
     
 
     with open(history_path, "r") as file:
@@ -484,7 +485,6 @@ def export_pdf():
     return send_file(pdf_path, as_attachment=True)
 
 
-
 @app.route('/criar_tabela_continuo', methods=['GET'])
 def criar_tabela_continuo_route():
     colunas_selecionadas = request.args.getlist('colunas')
@@ -504,9 +504,8 @@ def criar_tabela_continuo_route():
     table_html = table_html.replace('<table ', '<table class="table table-striped" ')
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
-
+    session['table_html']=table_html
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
-
 
 @app.route('/data_dict', methods=['GET'])
 def criar_data_dict_route():
@@ -528,9 +527,8 @@ def criar_data_dict_route():
     table_html = table_html.replace('<table ', '<table class="table table-striped" ')
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
-
+    session['table_html']=table_html
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
-
 
 @app.route('/download_csv', methods=['GET'])
 def download_csv():
@@ -539,7 +537,6 @@ def download_csv():
     if temp_filename and os.path.exists(temp_filename):
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_exploratory_table.csv", mimetype='text/csv')
     return "No table to download", 400
-
 
 @app.route('/completude_graph', methods=['GET'])
 def completude_graph():
@@ -570,8 +567,12 @@ def completude_graph():
     img.seek(0)
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
     
+    file_root, _ = os.path.splitext(session['selected_file'])
+    image_filename = os.path.join(app.config['TEMP_FOLDER'], str(datetime.now().strftime("%d%m%Y%H%M%S")) + "_completude_graph.png")
+    session['image_filename'] = image_filename
+    with open(image_filename, 'wb') as f:
+        f.write(img.getvalue())
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
-
 
 @app.route('/plot_graph', methods=['POST'])
 def plot_graph():
@@ -647,10 +648,29 @@ def download_plot():
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_plot.png", mimetype='png')
     return "No plot to download", 400
 
+@app.route('/add_table_to_history', methods=['GET'])
+def add_table_to_history():
+    table_html = session['table_html']
+    print(table_html)
+    try:
+        # Load complete history (for HTML storage)
+        complete_history = load_history_pdf(app, temp=True)
+
+        # Log the addition of the plot to the history
+        formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        complete_history.write(f'<p>{formatted_time} - Tabela adicionada a histórico</p>')
+
+        # Include image in the HTML by adding an <img> tag
+        complete_history.write(f'<div class="table-responsive">{table_html}</div>')
+        complete_history.close()
+
+        # Return success response
+        return jsonify({"status": "success"}), 200
+    except:
+        return jsonify({"status": "error", "message": "Não há gráfico para adicionar a histórico"}), 400
 
 @app.route('/add_plot_to_history', methods=['GET'])
 def add_plot_to_history():
-    file_root, _ = os.path.splitext(session['selected_file'])
     temp_filename = session['image_filename']
     
     if temp_filename and os.path.exists(temp_filename):
@@ -717,8 +737,6 @@ def apply_file_changes():
             return redirect(url_for('exploratory_analysis'))
         return redirect(request.referrer or '/')
     
-
-
 @app.route('/discard_file_changes', methods=['GET'])
 def discard_file_changes():
     file_name = session['selected_file']
@@ -739,8 +757,6 @@ def discard_file_changes():
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
     return redirect(request.referrer or '/')
-
-
 
 @app.route('/')
 def upload():
@@ -897,6 +913,10 @@ def exploratory_analysis():
     if(df is not None):
         column_names = df.columns.tolist()
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+@app.route('/recommended_graphs')
+def recommended_graphs():
+    return render_template('recommended_graphs.html',uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 @app.route('/history')

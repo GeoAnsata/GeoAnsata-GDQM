@@ -10,11 +10,16 @@ block content %}
     id="colunaForm_cont"
   >
     <div class="form-group">
-      <label>Selecione as colunas:</label><br />
+      <label>Selecione as colunas:</label><br>
+
+      <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="select_all_cont" />
+          <label class="form-check-label" for="select_all_cont">Selecionar Todas</label>
+      </div>
       {% for coluna in column_names %}
       <div class="form-check form-check-inline">
         <input
-          class="form-check-input"
+          class="form-check-input data-cont-checkbox"
           type="checkbox"
           name="colunas"
           value="{{ coluna }}"
@@ -24,6 +29,7 @@ block content %}
           >{{ coluna }}</label
         >
       </div>
+
       {% endfor %}
     </div>
     <button type="submit" class="btn btn-primary">Gerar Tabela para Valores Numéricos</button>
@@ -31,11 +37,16 @@ block content %}
 
   <form action="/data_dict" method="GET" class="mt-3" id="colunaForm_dict">
     <div class="form-group">
-      <label>Selecione as colunas:</label><br />
+      <label>Selecione as colunas:</label><br>
+
+      <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="select_all" />
+          <label class="form-check-label" for="select_all">Selecionar Todas</label>
+      </div>
       {% for coluna in column_names %}
       <div class="form-check form-check-inline">
         <input
-          class="form-check-input"
+          class="form-check-input data-dict-checkbox"
           type="checkbox"
           name="colunas"
           value="{{ coluna }}"
@@ -57,6 +68,7 @@ block content %}
     <h2>Tabela:</h2>
     <div class="table-responsive">{{ table | safe }}</div>
     <a href="#" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
+    <button class="btn btn-secondary mt-3" id="addTableToHistoryButton">Adicionar Tabela a Histórico</button>
   </div>
   {% endif %}
 
@@ -152,27 +164,61 @@ block content %}
 </div>
 <br>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("addPlotToHistoryButton").addEventListener("click", function (event) {
-        event.preventDefault();
-        
-        fetch("/add_plot_to_history")
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    // Show success modal
-                    new bootstrap.Modal(document.getElementById('successModal')).show();
-                } else {
-                    // Show error modal if there's an error
-                    new bootstrap.Modal(document.getElementById('errorModal')).show();
-                }
-            })
-            .catch(error => {
-                // Show error modal in case of any fetch error
-                new bootstrap.Modal(document.getElementById('errorModal')).show();
-                console.error("Error:", error);
-            });
-    });
-});
+  document.addEventListener("DOMContentLoaded", function () {
+      // Função para o botão de adicionar plot ao histórico
+      const addPlotButton = document.getElementById("addPlotToHistoryButton");
+      if (addPlotButton) {
+          addPlotButton.addEventListener("click", function (event) {
+              event.preventDefault();
+              
+              fetch("/add_plot_to_history")
+                  .then(response => response.json())
+                  .then(data => {
+                      const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                      new bootstrap.Modal(document.getElementById(modalId)).show();
+                  })
+                  .catch(error => {
+                      new bootstrap.Modal(document.getElementById('errorModal')).show();
+                      console.error("Error:", error);
+                  });
+          });
+      }
+  
+      // Função para o botão de adicionar gráfico ao histórico
+      const addTableButton = document.getElementById("addTableToHistoryButton");
+      if (addTableButton) {
+          addTableButton.addEventListener("click", function (event) {
+              event.preventDefault();
+              
+              fetch("/add_table_to_history")
+                  .then(response => response.json())
+                  .then(data => {
+                      const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                      new bootstrap.Modal(document.getElementById(modalId)).show();
+                  })
+                  .catch(error => {
+                      new bootstrap.Modal(document.getElementById('errorModal')).show();
+                      console.error("Error:", error);
+                  });
+          });
+      }
+  
+      // Função para o botão "Selecionar Todas"
+      const selectAllCheckbox = document.getElementById('select_all');
+      if (selectAllCheckbox) {
+          selectAllCheckbox.addEventListener('change', function() {
+              const checkboxes = document.querySelectorAll('.data-dict-checkbox');
+              checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+          });
+      }
+
+      const selectAllCheckboxCont = document.getElementById('select_all_cont');
+      if (selectAllCheckboxCont) {
+          selectAllCheckboxCont.addEventListener('change', function() {
+              const checkboxes = document.querySelectorAll('.data-cont-checkbox');
+              checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckboxCont.checked);
+          });
+      }
+  });
   </script>
 {% endblock %}

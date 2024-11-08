@@ -134,13 +134,13 @@ def gerar_estatisticas_tabela(tabela):
         if pd.api.types.is_numeric_dtype(tabela[coluna]):
             resumo["Variável"].append(coluna)
             resumo["n"].append(tabela[coluna].count())
-            resumo["min"].append(tabela[coluna].min())
-            resumo["25%"].append(tabela[coluna].quantile(0.25))
-            resumo["50%"].append(tabela[coluna].median())
-            resumo["média"].append(tabela[coluna].mean())
-            resumo["75%"].append(tabela[coluna].quantile(0.75))
-            resumo["máx"].append(tabela[coluna].max())
-            resumo["std"].append(tabela[coluna].std())
+            resumo["min"].append(custom_round(tabela[coluna].min()))
+            resumo["25%"].append(custom_round(tabela[coluna].quantile(0.25)))
+            resumo["50%"].append(custom_round(tabela[coluna].median()))
+            resumo["média"].append(custom_round(tabela[coluna].mean()))
+            resumo["75%"].append(custom_round(tabela[coluna].quantile(0.75)))
+            resumo["máx"].append(custom_round(tabela[coluna].max()))
+            resumo["std"].append(custom_round(tabela[coluna].std()))
         else:
             # Preencher com valores nulos se a coluna não for numérica
             resumo["Variável"].append(coluna)
