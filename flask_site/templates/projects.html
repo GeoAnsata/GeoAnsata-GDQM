@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Projetos{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Selecione ou Adicione um Projeto</h2>
+    {% if projects %}
+        <ul>
+            {% for project in projects %}
+                <li>
+                    <a href="{{ url_for('select_project', project_name=project) }}">{{ project }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Você não tem projetos ainda.</p>
+    {% endif %}
+    
+    <!-- Formulário para Adicionar Novo Projeto -->
+    <form method="POST">
+        <label for="project_name">Novo Projeto:</label>
+        <input type="text" name="project_name" required>
+        <button type="submit">Adicionar Projeto</button>
+    </form>
+</div>
+{% endblock %}

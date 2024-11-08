@@ -17,6 +17,7 @@ import numpy as np
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['USERS_DIR']='user_data'
 app.permanent_session_lifetime = timedelta(minutes=10)
 
 USERS = {
@@ -24,18 +25,53 @@ USERS = {
     "user2": "password2",
 }
 
-def get_user_folder(folder_type):
-    """Get the folder path for the current user based on folder_type ('upload' or 'temp')."""
+
+def get_project_folder(folder_type):
+    """Retorna o caminho da pasta baseada no usuário, projeto e tipo de pasta ('uploads' ou 'temp')."""
     username = session.get('username')
     if not username:
         return None
-    user_folder = os.path.join(folder_type, username)
-    os.makedirs(user_folder, exist_ok=True)  # Ensure folder exists
-    return user_folder
+    project_name = session.get('current_project')
+    if not project_name:
+        return None
+    base_folder = os.path.join(app.config['USERS_DIR'], username, project_name, folder_type)
+    os.makedirs(base_folder, exist_ok=True)
+    return base_folder
+
+def get_existing_projects():
+    dict_project_names = {}
+    
+    # Get the list of users' project directories
+    users_dir = app.config['USERS_DIR']
+    
+    # Ensure the users directory exists
+    if not os.path.exists(users_dir):
+        return dict_project_names  # Return empty if no users directory exists
+    
+    # Loop through each user directory
+    for username in os.listdir(users_dir):
+        user_folder = os.path.join(users_dir, username)
+        
+        if os.path.isdir(user_folder):
+            user_projects = []
+            
+            # Loop through the project directories within the user folder
+            for project_folder in os.listdir(user_folder):
+                project_path = os.path.join(user_folder, project_folder)
+                
+                if os.path.isdir(project_path):
+                    user_projects.append(project_folder)
+            
+            # Only add to dict if there are projects
+            if user_projects:
+                dict_project_names[username] = user_projects
+    
+    # Save the project dictionary to the session
+    session['projects'] = dict_project_names
 
 def load_existing_files():
     """Load existing files in the user's upload folder and update session['sheet_names'] with their sheet names."""
-    upload_folder = get_user_folder('upload')
+    upload_folder = get_project_folder('upload')
     dict_sheet_names = {}
 
     # Iterate through existing files in the upload folder
@@ -78,14 +114,9 @@ def login():
         if USERS.get(username) == password:
             session['username'] = username
             session.permanent = True
-            load_existing_files()
-            session['selected_file']=''
-            session['selected_sheet']=''
-            session['filters'] = [] 
-            session['filter_logic']='and'
-            session['image_filename']=''
-            session['table_html']=''
-            return redirect(url_for('upload'))  # Redirect to base page
+            session['current_project']=''
+            session['projects']={}
+            return redirect(url_for('projects'))  # Redirect to base page
         else:
             flash("Invalid credentials, please try again.")
             return render_template('login.html', error="Invalid username or password.")
@@ -105,8 +136,8 @@ def upload_file():
         return render_template('upload.html', error='Nenhum arquivo enviado!')
     files = request.files.getlist('files')
     dict_sheet_names=session['sheet_names']
-    upload_folder = get_user_folder('upload')
-    temp_folder = get_user_folder('temp')
+    upload_folder = get_project_folder('upload')
+    temp_folder = get_project_folder('temp')
     for file in files:
         if file.filename == '':
             return render_template('upload.html', error='Nenhum arquivo selecionado!')
@@ -155,7 +186,7 @@ def upload_file():
 @app.route('/download_sheet/<file_name>/<sheet_name>', methods=['GET'])
 @login_required
 def download_sheet(file_name,sheet_name):
-    upload_folder = get_user_folder('upload')
+    upload_folder = get_project_folder('upload')
     file_path = os.path.join(upload_folder, file_name)
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     temp_file_path = os.path.join(tempfile.gettempdir(), f"{file_name}_{sheet_name}.csv")
@@ -167,8 +198,8 @@ def download_sheet(file_name,sheet_name):
 @app.route('/download_file/<file_name>', methods=['GET'])
 @login_required
 def download_file(file_name):
-    upload_folder = get_user_folder('upload')
-    temp_folder = get_user_folder('temp')
+    upload_folder = get_project_folder('upload')
+    temp_folder = get_project_folder('temp')
     file_path = os.path.join(upload_folder, file_name)
     
     if file_path.endswith('.xlsx'):
@@ -182,7 +213,7 @@ def download_file(file_name):
 @app.route('/remove_columns', methods=['POST'])
 @login_required
 def remove_columns():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     columns_to_remove = request.form.getlist('columns_to_remove')
     comment = request.form.get('comment')
     if(comment):
@@ -236,7 +267,7 @@ def remove_columns():
 @app.route('/remove_rows', methods=['POST'])
 @login_required
 def remove_rows():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     start_row = int(request.form.get('start_row'))
     end_row = int(request.form.get('end_row'))
     sort_column = request.form.get('sort_column')
@@ -303,7 +334,7 @@ def remove_rows():
 @app.route('/remove_nulls', methods=['POST'])
 @login_required
 def remove_nulls():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     columns_to_remove = request.form.getlist('columns_to_remove')
     comment = request.form.get('comment')
     if(comment):
@@ -361,7 +392,7 @@ def remove_nulls():
 @app.route('/remove_query', methods=['POST'])
 @login_required
 def remove_query():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     query_str = request.form.get('query_string')
     comment = request.form.get('comment')
     if(comment):
@@ -422,7 +453,7 @@ def remove_query():
 @app.route('/apply_filters', methods=['POST'])
 @login_required
 def apply_filters():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     # Carrega os filtros recebidos como JSON
     filters = request.form.getlist('filters[]')
     filter_logic = request.form.get('filter_logic', 'and')
@@ -533,7 +564,7 @@ from xhtml2pdf import pisa
 @app.route('/export_pdf', methods=['GET'])
 @login_required
 def export_pdf():
-    upload_folder = get_user_folder('upload')
+    upload_folder = get_project_folder('upload')
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_root, _ = os.path.splitext(file_name)
@@ -569,7 +600,7 @@ def export_pdf():
 @app.route('/criar_tabela_continuo', methods=['GET'])
 @login_required
 def criar_tabela_continuo_route():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
     tabela_continua = gerar_estatisticas_tabela(df[colunas_selecionadas])
@@ -593,7 +624,7 @@ def criar_tabela_continuo_route():
 @app.route('/data_dict', methods=['GET'])
 @login_required
 def criar_data_dict_route():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
     #data_dict = criar_data_dict(df[colunas_selecionadas])
@@ -618,7 +649,7 @@ def criar_data_dict_route():
 @app.route('/download_csv', methods=['GET'])
 @login_required
 def download_csv():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     file_root, _ = os.path.splitext(session['selected_file'])
     temp_filename = os.path.join(temp_folder, file_root + "_exploratory_table.csv")
     if temp_filename and os.path.exists(temp_filename):
@@ -628,7 +659,7 @@ def download_csv():
 @app.route('/completude_graph', methods=['GET'])
 @login_required
 def completude_graph():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
     column_names = df.columns.tolist() if df is not None else None
@@ -665,7 +696,7 @@ def completude_graph():
 @app.route('/plot_graph', methods=['POST'])
 @login_required
 def plot_graph():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     x_column = request.form['x_column']
     y_column = request.form['y_column']
     chart_type = request.form['chart_type']
@@ -742,7 +773,7 @@ def download_plot():
 @app.route('/add_table_to_history', methods=['GET'])
 @login_required
 def add_table_to_history():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     table_html = session['table_html']
     print(table_html)
     try:
@@ -765,7 +796,7 @@ def add_table_to_history():
 @app.route('/add_plot_to_history', methods=['GET'])
 @login_required
 def add_plot_to_history():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     temp_filename = session['image_filename']
     
     if temp_filename and os.path.exists(temp_filename):
@@ -790,8 +821,8 @@ def add_plot_to_history():
 @login_required
 def apply_file_changes():
     try:
-        temp_folder = get_user_folder('temp')
-        upload_folder = get_user_folder('upload')
+        temp_folder = get_project_folder('temp')
+        upload_folder = get_project_folder('upload')
         file_name = session['selected_file']
         dict_sheet_names = session['sheet_names']
         file_path = os.path.join(upload_folder, file_name)
@@ -838,8 +869,8 @@ def apply_file_changes():
 @app.route('/discard_file_changes', methods=['GET'])
 @login_required
 def discard_file_changes():
-    temp_folder = get_user_folder('temp')
-    upload_folder = get_user_folder('upload')
+    temp_folder = get_project_folder('temp')
+    upload_folder = get_project_folder('upload')
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_path = os.path.join(temp_folder, file_name)
@@ -859,6 +890,69 @@ def discard_file_changes():
         df.to_excel(file_path,index=False)
     return redirect(request.referrer or '/')
 
+
+@app.route('/projects', methods=['GET', 'POST'])
+@login_required
+def projects():
+    # Get the existing projects for all users and update session
+    get_existing_projects()
+    
+    # Get the current user and their projects from session
+    username = session.get('username')
+    user_projects = session.get('projects').get(username, [])
+
+    if not user_projects:
+        flash("Você não tem projetos existentes.")
+
+    # Handle adding a new project
+    if request.method == 'POST':
+        project_name = request.form.get('project_name').strip()
+        
+        # Ensure the project name isn't empty and doesn't already exist
+        if project_name and project_name not in user_projects:
+            # Add the new project to the user's list
+            user_projects.append(project_name)
+            
+            # Save the updated projects list back to the session
+            session['projects'][username] = user_projects
+            
+            # Create the necessary directories for the new project
+            user_folder = os.path.join(app.config['USERS_DIR'], username)
+            project_folder = os.path.join(user_folder, project_name)
+            
+            # Create the project directory and its subdirectories
+            os.makedirs(project_folder, exist_ok=True)
+            os.makedirs(os.path.join(project_folder, 'upload'), exist_ok=True)
+            os.makedirs(os.path.join(project_folder, 'temp'), exist_ok=True)
+
+            flash(f"Projeto '{project_name}' adicionado com sucesso!")
+        else:
+            flash("Projeto inválido ou já existe.")
+
+    return render_template('projects.html', projects=user_projects)
+
+
+@app.route('/select_project/<project_name>')
+@login_required
+def select_project(project_name):
+    username = session.get('username')
+    
+    if project_name in session.get('projects').get(username,[]):
+        session['current_project'] = project_name
+        load_existing_files()
+        session['selected_file'] = ''
+        session['selected_sheet'] = ''
+        session['filters'] = [] 
+        session['filter_logic'] = 'and'
+        session['image_filename'] = ''
+        session['table_html'] = ''
+        
+        return redirect(url_for('upload'))  # Redirect to the upload page
+    else:
+        flash("Projeto não encontrado!")
+        return redirect(url_for('projects'))
+    
+
 @app.route('/')
 @login_required
 def upload():
@@ -872,7 +966,7 @@ def upload():
 @login_required
 def display():
     try:
-        temp_folder = get_user_folder('temp')
+        temp_folder = get_project_folder('temp')
         df = load_df(temp_folder)
         column_names = df.columns.tolist()
         
@@ -980,7 +1074,7 @@ def download_page():
 @login_required
 def clean_data():
     try:
-        temp_folder = get_user_folder('temp')
+        temp_folder = get_project_folder('temp')
         df = load_df(temp_folder)
 
         start = request.args.get('start', default=0, type=int)
@@ -1016,7 +1110,7 @@ def clean_data():
 @app.route('/exploratory_analysis')
 @login_required
 def exploratory_analysis():
-    temp_folder = get_user_folder('temp')
+    temp_folder = get_project_folder('temp')
     df = load_df(temp_folder)
     column_names=None
     if(df is not None):
@@ -1034,7 +1128,7 @@ def recommended_graphs():
 def history():
     try:
 
-        upload_folder = get_user_folder('upload')
+        upload_folder = get_project_folder('upload')
         history=load_history(upload_folder,"r")
         content = history.read()
         history.close()
