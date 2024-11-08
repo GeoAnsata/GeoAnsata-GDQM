@@ -21,8 +21,10 @@ app.config['USERS_DIR']='user_data'
 app.permanent_session_lifetime = timedelta(minutes=10)
 
 USERS = {
-    "user1": "password1",
-    "user2": "password2",
+    "Adão": "123",
+    "Gabriel": "123",
+    "Glaucia": "123",
+    "Yuri": "123"
 }
 
 
@@ -126,6 +128,13 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('username', None)
+    session.pop('current_project',None)
+    session.pop('selected_file',None)
+    session.pop('selected_sheet',None)
+    session.pop('filters',None)
+    session.pop('image_filename',None)
+    session.pop('table_html',None)
+    session.pop('sheet_names',None)
     return redirect(url_for('login'))
 
 
@@ -1121,7 +1130,6 @@ def exploratory_analysis():
 @login_required
 def recommended_graphs():
     return render_template('recommended_graphs.html',uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
-
 
 @app.route('/history')
 @login_required

@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</head>
-<body>
-    <div class="container">
-        <h2 class="mt-5">Login</h2>
+{% extends "base.html" %}
+
+{% block title %}Gráficos Recomendados{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
         <form action="{{ url_for('login') }}" method="POST" class="mt-3">
             <div class="form-group">
                 <label for="username">Username</label>
@@ -29,5 +21,4 @@
             </div>
         {% endif %}
     </div>
-</body>
-</html>
+{% endblock %}
