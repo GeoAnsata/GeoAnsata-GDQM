@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}History{% endblock %}
+{% block title %}Histórico{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
-    <h2>History</h2>
-    <a href="{{ url_for('export_pdf') }}" class="btn btn-primary" id="generateHistoryPdf">Export History as PDF</a>
+    <h2>Histórico</h2>
+    <a href="{{ url_for('export_pdf') }}" class="btn btn-primary" id="generateHistoryPdf">Baixar Histórico como Pdf</a>
     {% if file_history %}
     <div class="mt-5">
         {{ file_history|safe }} 

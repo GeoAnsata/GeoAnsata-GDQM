@@ -126,7 +126,7 @@ def remove_columns():
     id =  re.sub(r'\W+', '_', formatted_time)
     history= load_history(app, temp=True)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-    history.write(formatted_time + "Removed columns:" + str(columns_to_remove) + "\n</a></pre>\n")
+    history.write(formatted_time + "Colunas removidas:" + str(columns_to_remove) + "\n</a></pre>\n")
     history.write(f'<div id="{id}" class="collapse">')
     history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -137,7 +137,7 @@ def remove_columns():
     history.close()
     
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write(formatted_time + "Removed columns: " + str(columns_to_remove) + "\n")
+    complete_history.write(formatted_time + "Colunas removidas: " + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
@@ -190,7 +190,7 @@ def remove_rows():
 
         num_lines = "Remoção de "+str(end_row-start_row)+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-end_row+start_row) + " linhas"
         history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-        history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n</a></pre>\n")
+        history.write(formatted_time + "Removidas linhas de " + str(start_row) + " até " + str(end_row) + "\n</a></pre>\n")
         
         # Tabela colapsável com identificador único
         history.write(f'<div id="{id}" class="collapse">')
@@ -205,7 +205,7 @@ def remove_rows():
         
 
         complete_history=load_history_pdf(app,temp=True)
-        complete_history.write(formatted_time + "Removed rows from " + str(start_row) + " to " + str(end_row) + "\n")
+        complete_history.write(formatted_time + "Removidas linhas de " + str(start_row) + " até " + str(end_row) + "\n")
         complete_history.write(f'<p>{num_lines}</p>')
         if(comment):
             complete_history.write(f'<p>{comment}</p>')
@@ -244,7 +244,7 @@ def remove_nulls():
     id =  re.sub(r'\W+', '_', formatted_time)
     history= load_history(app, temp=True)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-    history.write(formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n</a></pre>\n")
+    history.write(formatted_time + "Remoção de linhas com valores nulos nas colunas:" + str(columns_to_remove) + "\n</a></pre>\n")
     
     # Tabela colapsável com identificador único
     history.write(f'<div id="{id}" class="collapse">')
@@ -257,7 +257,7 @@ def remove_nulls():
     history.close()
 
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write(formatted_time + "Removed Null values in columns:" + str(columns_to_remove) + "\n")
+    complete_history.write(formatted_time + "Remoção de linhas com valores nulos nas colunas:" + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
@@ -301,7 +301,7 @@ def remove_query():
     id =  re.sub(r'\W+', '_', formatted_time)
     history= load_history(app, temp=True)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-    history.write(formatted_time + "Removed by query:" + query_str + "\n</a></pre>\n")
+    history.write(formatted_time + "Removido pela query:" + query_str + "\n</a></pre>\n")
     
     # Tabela colapsável com identificador único
     history.write(f'<div id="{id}" class="collapse">')
@@ -317,7 +317,7 @@ def remove_query():
 
         
     complete_history=load_history_pdf(app,temp=True)
-    complete_history.write(formatted_time + "Removed by query:" + query_str+ "\n")
+    complete_history.write(formatted_time + "Removido pela query:" + query_str+ "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
@@ -412,7 +412,7 @@ def apply_filters():
     # Salva o histórico
     history = load_history(app, temp=True)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
-    history.write(formatted_time + "Removed by filters:" + query_string + "\n</a></pre>\n")
+    history.write(formatted_time + "Removido pelos filtros:" + query_string + "\n</a></pre>\n")
     history.write(f'<div id="{id}" class="collapse">')
     history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -423,7 +423,7 @@ def apply_filters():
     history.close()
 
     complete_history = load_history_pdf(app, temp=True)
-    complete_history.write(formatted_time + "Removed by filters:" + str(applied_filters) + "\n")
+    complete_history.write(formatted_time + "Removido pelos filtros:" + str(applied_filters) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
         complete_history.write(f'<p>{comment}</p>')
@@ -578,40 +578,46 @@ def plot_graph():
     x_column = request.form['x_column']
     y_column = request.form['y_column']
     chart_type = request.form['chart_type']
-    image_size = request.form['image_size'].split('x')  # Separar largura e altura
+    image_size = request.form['image_size'].split('x')
     width, height = int(image_size[0]), int(image_size[1])
     point_color = request.form['point_color']
     
+    # Obter título personalizado, se fornecido
+    custom_title = request.form.get('custom_title', '')
+    
     # Obter as unidades de medida para X e Y, se fornecidas
-    x_unit = request.form.get('x_unit', '')  # Unidade para X (opcional)
-    y_unit = request.form.get('y_unit', '')  # Unidade para Y (opcional)
+    x_unit = request.form.get('x_unit', '')
+    y_unit = request.form.get('y_unit', '')
 
     df = load_df(app)
     column_names = df.columns.tolist() if df is not None else None
     x_min, x_max = min(df[x_column]), max(df[x_column])
     plt.figure(figsize=(width, height))
 
+    # Definir título com base no valor personalizado ou título padrão
+    title = custom_title if custom_title else f'Gráfico de {chart_type.capitalize()} {y_column} vs {x_column}'
+
     # Verifica o tipo de gráfico e plota
     if chart_type == 'line':
         plt.plot(df[x_column], df[y_column], marker='o', color=point_color, linestyle='-')
         plt.xlim(x_min, x_max)
-        plt.title(f'Gráfico de Linha de {y_column} vs {x_column}')
+        plt.title(title)
         plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
         plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
     elif chart_type == 'scatter':
         plt.scatter(df[x_column], df[y_column], color=point_color)
         plt.xlim(x_min, x_max)
-        plt.title(f'Gráfico de Dispersão {y_column} vs {x_column}')
+        plt.title(title)
         plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
         plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
     elif chart_type == 'bar':
         plt.bar(df[x_column], df[y_column], color=point_color)
         plt.xlim(x_min, x_max)
-        plt.title(f'Gráfico de Barras {y_column} vs {x_column}')
+        plt.title(title)
         plt.xlabel(f"{x_column} ({x_unit})" if x_unit else x_column)
         plt.ylabel(f"{y_column} ({y_unit})" if y_unit else y_column)
     elif chart_type == 'histogram':
-        plt.title(f'Histograma de {x_column}')
+        plt.title(title)
         plt.xlim(x_min, x_max)
         plt.hist(df[x_column], bins=30, color=point_color)
         plt.ylabel(f"{x_column} ({x_unit})" if x_unit else x_column)
@@ -630,7 +636,7 @@ def plot_graph():
     session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
-    #return redirect(url_for('exploratory_analysis', image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"]))
+
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/download_plot', methods=['GET'])
@@ -644,7 +650,6 @@ def download_plot():
 
 @app.route('/add_plot_to_history', methods=['GET'])
 def add_plot_to_history():
-    print("AAAAAAA")
     file_root, _ = os.path.splitext(session['selected_file'])
     temp_filename = session['image_filename']
     
@@ -654,16 +659,16 @@ def add_plot_to_history():
 
         # Log the addition of the plot to the history
         formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        complete_history.write(f'<p>{formatted_time} - Added plot image to history</p>')
+        complete_history.write(f'<p>{formatted_time} - Gráfico adicionado a histórico</p>')
 
         # Include image in the HTML by adding an <img> tag
-        complete_history.write(f'<img src="{temp_filename}" alt="Plot Image" style="width:100%; max-width:600px;"/>')
+        complete_history.write(f'<img src="{temp_filename}" alt="Gráfico" style="width:100%; max-width:600px;"/>')
         complete_history.close()
 
         # Return success response
         return jsonify({"status": "success"}), 200
     
-    return jsonify({"status": "error", "message": "No plot to add to history"}), 400
+    return jsonify({"status": "error", "message": "Não há gráfico para adicionar a histórico"}), 400
 
 #da erro se tentar aplicar mudanças sem ter
 @app.route('/apply_file_changes', methods=['GET'])

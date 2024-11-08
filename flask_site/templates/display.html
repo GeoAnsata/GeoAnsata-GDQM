@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Display</h2>
+    <h2>Visualização</h2>
     {% if table %}
     <div class="mt-5">
         <h2>Tabela:</h2>
@@ -67,11 +67,11 @@
         <form id="pagination-form" method="get">
             <div class="form-row">
                 <div class="form-group col-md-3">
-                    <label for="start">Start:</label>
+                    <label for="start">Início:</label>
                     <input type="number" class="form-control" id="start" name="start" value="{{ start }}">
                 </div>
                 <div class="form-group col-md-3">
-                    <label for="lines_by_page">Lines by page:</label>
+                    <label for="lines_by_page">Linhas por Página:</label>
                     <input type="number" class="form-control" id="lines_by_page" name="lines_by_page" value="{{ lines_by_page }}">
                 </div>
                 <div class="form-group col-md-3 align-self-end">
