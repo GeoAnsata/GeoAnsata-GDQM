@@ -35,8 +35,6 @@ def get_table(df, request, start, lines_by_page, reset_index=True):
         table_html = table_html.replace(f'<th>{col}</th>', f'<th data-column="{col}" style="cursor: pointer;">{col} {sort_arrow}</th>')
     return table_html
 
-
-
 def custom_round(value):
     try:
         numeric_value = float(value)
@@ -47,8 +45,6 @@ def custom_round(value):
     except ValueError:
         # If value cannot be converted to float, return it unchanged
         return value
-
-
 
 def criar_data_dict(dataset):
     linhas_tabela = []
@@ -73,7 +69,6 @@ def criar_data_dict(dataset):
     tabela['Porcentagem'] = round((tabela['Contagem'] / total_linhas) * 100, 2)
 
     return tabela
-
 
 def gerar_resumo_tabela(tabela):
     colunas = []
@@ -115,7 +110,6 @@ def gerar_resumo_tabela(tabela):
     })
     
     return resumo_df
-
 
 def gerar_estatisticas_tabela(tabela):
     resumo = {

@@ -1,11 +1,11 @@
 import pandas as pd
 import os
 from flask import session
-def load_df(app):
+def load_df(temp_folder):
     try:
         file_name = session['selected_file']
         dict_sheet_names = session['sheet_names']
-        file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+        file_path = os.path.join(temp_folder, file_name)
         if file_name.endswith('.csv'):
             df = pd.read_csv(file_path)
         elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
@@ -18,13 +18,7 @@ def load_df(app):
     except:
         return None
     
-
-    
-def load_history(app,acess_mode="a", temp=True):
-    if(temp):
-        folder='TEMP_FOLDER'
-    else:
-        folder='UPLOAD_FOLDER'
+def load_history(folder,acess_mode="a"):
 
     try:
         file_name = session['selected_file']
@@ -32,19 +26,14 @@ def load_history(app,acess_mode="a", temp=True):
         file_root, _ = os.path.splitext(file_name)
         if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
             selected_sheet=session['selected_sheet']
-            history = open(os.path.join(app.config[folder], file_root + "_" + selected_sheet + ".txt"), acess_mode)
+            history = open(os.path.join(folder, file_root + "_" + selected_sheet + ".txt"), acess_mode)
         else:
-            history = open(os.path.join(app.config[folder], file_root + ".txt"), acess_mode)
+            history = open(os.path.join(folder, file_root + ".txt"), acess_mode)
         return history
     except:
         return None
     
-
-def load_history_pdf(app,acess_mode="a", temp=True):
-    if(temp):
-        folder='TEMP_FOLDER'
-    else:
-        folder='UPLOAD_FOLDER'
+def load_history_pdf(folder,acess_mode="a"):
 
     try:
         file_name = session['selected_file']
@@ -52,18 +41,18 @@ def load_history_pdf(app,acess_mode="a", temp=True):
         file_root, _ = os.path.splitext(file_name)
         if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
             selected_sheet=session['selected_sheet']
-            history = open(os.path.join(app.config[folder], file_root + "_" + selected_sheet + "complete.html"), acess_mode)
+            history = open(os.path.join(folder, file_root + "_" + selected_sheet + "complete.html"), acess_mode)
         else:
-            history = open(os.path.join(app.config[folder], file_root + "complete.html"), acess_mode)
+            history = open(os.path.join(folder, file_root + "complete.html"), acess_mode)
         return history
     except:
         return None
 
-def load_backup_df(app):
+def load_backup_df(upload_folder):
     try:
         file_name = session['selected_file']
         dict_sheet_names = session['sheet_names']
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+        file_path = os.path.join(upload_folder, file_name)
         if file_name.endswith('.csv'):
             df = pd.read_csv(file_path)
         elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):

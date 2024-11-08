@@ -27,8 +27,6 @@
         });
     </script>
     {% block scripts %}
-
-
     <script>
     document.addEventListener("DOMContentLoaded", function() {
         function handleButtonClick(buttonId, redirectUrl) {
@@ -77,6 +75,17 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('history') }}">Histórico</a>
                 </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                {% if session.get('username') %}
+                    <li class="nav-item logout-link">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                {% endif %}
             </ul>
         </div>
     </nav>

@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, session,jsonify, json
-from utils.clear_directory import clear_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, session,jsonify, json, flash
+from functools import wraps
 from utils.info_tables import *
 from utils.load_df import *
 import seaborn as sns
@@ -16,41 +16,106 @@ import numpy as np
 
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['TEMP_FOLDER'] = 'temp/'
 app.config['SECRET_KEY'] = 'your_secret_key'
+app.permanent_session_lifetime = timedelta(minutes=10)
 
+USERS = {
+    "user1": "password1",
+    "user2": "password2",
+}
 
+def get_user_folder(folder_type):
+    """Get the folder path for the current user based on folder_type ('upload' or 'temp')."""
+    username = session.get('username')
+    if not username:
+        return None
+    user_folder = os.path.join(folder_type, username)
+    os.makedirs(user_folder, exist_ok=True)  # Ensure folder exists
+    return user_folder
 
-@app.before_first_request
-def init_session_vars():
-    clear_directory(app.config['UPLOAD_FOLDER'])
-    clear_directory(app.config['TEMP_FOLDER'])
+def load_existing_files():
+    """Load existing files in the user's upload folder and update session['sheet_names'] with their sheet names."""
+    upload_folder = get_user_folder('upload')
+    dict_sheet_names = {}
 
-    session['sheet_names'] = {}
-    session['selected_file']=''
-    session['selected_sheet']=''
-    session['filters'] = [] 
-    session['filter_logic']='and'
-    session['image_filename']=''
-    session['table_html']=''
+    # Iterate through existing files in the upload folder
+    for filename in os.listdir(upload_folder):
+        file_path = os.path.join(upload_folder, filename)
+        _, file_ext = os.path.splitext(filename)
+
+        # Process Excel files
+        if file_ext == '.xlsx':
+            df = pd.read_excel(file_path, sheet_name=None)
+            sheet_names = list(df.keys())
+            if len(sheet_names) > 1:
+                dict_sheet_names[filename] = sheet_names
+            else:
+                dict_sheet_names[filename] = []
+
+        # Process CSV files
+        elif file_ext == '.csv':
+            dict_sheet_names[filename] = []
+
+    # Update session with the sheet names found in existing files
+    session['sheet_names'] = dict_sheet_names
+
+# Login required decorator to restrict access to pages
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        # Check if the user exists and password matches
+        if USERS.get(username) == password:
+            session['username'] = username
+            session.permanent = True
+            load_existing_files()
+            session['selected_file']=''
+            session['selected_sheet']=''
+            session['filters'] = [] 
+            session['filter_logic']='and'
+            session['image_filename']=''
+            session['table_html']=''
+            return redirect(url_for('upload'))  # Redirect to base page
+        else:
+            flash("Invalid credentials, please try again.")
+            return render_template('login.html', error="Invalid username or password.")
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
 
 
 @app.route('/upload_file', methods=['POST'])
+@login_required
 def upload_file():
     if 'files' not in request.files:
         return render_template('upload.html', error='Nenhum arquivo enviado!')
     files = request.files.getlist('files')
     dict_sheet_names=session['sheet_names']
+    upload_folder = get_user_folder('upload')
+    temp_folder = get_user_folder('temp')
     for file in files:
         if file.filename == '':
             return render_template('upload.html', error='Nenhum arquivo selecionado!')
         file_root, _ = os.path.splitext(file.filename)
         if file and file.filename.endswith('.xlsx'):
-            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            upload_path = os.path.join(upload_folder, file.filename)
             file.save(upload_path)
             
-            temp_path = os.path.join(app.config['TEMP_FOLDER'], file.filename)
+            temp_path = os.path.join(temp_folder, file.filename)
             shutil.copy(upload_path, temp_path)
 
 
@@ -60,36 +125,38 @@ def upload_file():
                 dict_sheet_names[file.filename]=sheet_names
                 for sheet_name in sheet_names:
                     df=pd.read_excel(file,sheet_name=sheet_name)
-                    df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + sheet_name + ".csv"),index=False)
-                    f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + sheet_name + ".txt"), "w")
+                    df.to_csv(os.path.join(temp_folder, file_root + "_" + sheet_name + ".csv"),index=False)
+                    f = open(os.path.join(temp_folder, file_root + "_" + sheet_name + ".txt"), "w")
                     f.close()                    
-                    f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + "_" + sheet_name + ".txt"), "w")
+                    f = open(os.path.join(upload_folder, file_root + "_" + sheet_name + ".txt"), "w")
                     f.close()
             else:
                 dict_sheet_names[file.filename]=[]
-                f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + ".txt"), "w")
+                f = open(os.path.join(temp_folder, file_root + ".txt"), "w")
                 f.close()
-                f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + ".txt"), "w")
+                f = open(os.path.join(upload_folder, file_root + ".txt"), "w")
                 f.close()
 
         elif file and file.filename.endswith('.csv'):
             dict_sheet_names[file.filename]=[]
-            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            upload_path = os.path.join(upload_folder, file.filename)
             file.save(upload_path)
             
-            temp_path = os.path.join(app.config['TEMP_FOLDER'], file.filename)
+            temp_path = os.path.join(temp_folder, file.filename)
             shutil.copy(upload_path, temp_path)
-            f = open(os.path.join(app.config['TEMP_FOLDER'], file_root + ".txt"), "w")
+            f = open(os.path.join(temp_folder, file_root + ".txt"), "w")
             f.close()
-            f = open(os.path.join(app.config['UPLOAD_FOLDER'], file_root + ".txt"), "w")
+            f = open(os.path.join(upload_folder, file_root + ".txt"), "w")
             f.close()
     session['sheet_names']=dict_sheet_names
     return redirect(url_for('upload'))
 
 
 @app.route('/download_sheet/<file_name>/<sheet_name>', methods=['GET'])
+@login_required
 def download_sheet(file_name,sheet_name):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    upload_folder = get_user_folder('upload')
+    file_path = os.path.join(upload_folder, file_name)
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     temp_file_path = os.path.join(tempfile.gettempdir(), f"{file_name}_{sheet_name}.csv")
     df.to_csv(temp_file_path, index=False)
@@ -98,8 +165,11 @@ def download_sheet(file_name,sheet_name):
 
 
 @app.route('/download_file/<file_name>', methods=['GET'])
+@login_required
 def download_file(file_name):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    upload_folder = get_user_folder('upload')
+    temp_folder = get_user_folder('temp')
+    file_path = os.path.join(upload_folder, file_name)
     
     if file_path.endswith('.xlsx'):
         return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -110,7 +180,9 @@ def download_file(file_name):
  
     
 @app.route('/remove_columns', methods=['POST'])
+@login_required
 def remove_columns():
+    temp_folder = get_user_folder('temp')
     columns_to_remove = request.form.getlist('columns_to_remove')
     comment = request.form.get('comment')
     if(comment):
@@ -118,14 +190,14 @@ def remove_columns():
     file_name = session['selected_file']
     file_root, _ = os.path.splitext(file_name)
     dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df=load_df(app)
+    file_path = os.path.join(temp_folder, file_name)
+    df=load_df(temp_folder)
     table_html = get_table(df[columns_to_remove], request, 0, 100)
     num_lines = "Número de linhas = " + str(df.shape[0])
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
-    history= load_history(app, temp=True)
+    history= load_history(temp_folder)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
     history.write(formatted_time + "Colunas removidas:" + str(columns_to_remove) + "\n</a></pre>\n")
     history.write(f'<div id="{id}" class="collapse">')
@@ -137,7 +209,7 @@ def remove_columns():
     history.write('</div>')
     history.close()
     
-    complete_history=load_history_pdf(app,temp=True)
+    complete_history=load_history_pdf(temp_folder)
     complete_history.write(formatted_time + "Colunas removidas: " + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -152,7 +224,7 @@ def remove_columns():
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+        df.to_csv(os.path.join(temp_folder, file_root + "_" + selected_sheet + ".csv"),index=False)
 
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
@@ -162,7 +234,9 @@ def remove_columns():
 
 
 @app.route('/remove_rows', methods=['POST'])
+@login_required
 def remove_rows():
+    temp_folder = get_user_folder('temp')
     start_row = int(request.form.get('start_row'))
     end_row = int(request.form.get('end_row'))
     sort_column = request.form.get('sort_column')
@@ -173,8 +247,8 @@ def remove_rows():
 
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df = load_df(app)
+    file_path = os.path.join(temp_folder, file_name)
+    df = load_df(temp_folder)
 
     # Apply sorting
     if sort_column and sort_column in df.columns:
@@ -183,7 +257,7 @@ def remove_rows():
     if end_row >= len(df):
         end_row = len(df) - 1
     if start_row < len(df):
-        history = load_history(app, temp=True)
+        history = load_history(temp_folder)
         current_time = datetime.now()
         formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
         id =  re.sub(r'\W+', '_', formatted_time)
@@ -205,7 +279,7 @@ def remove_rows():
 
         
 
-        complete_history=load_history_pdf(app,temp=True)
+        complete_history=load_history_pdf(temp_folder)
         complete_history.write(formatted_time + "Removidas linhas de " + str(start_row) + " até " + str(end_row) + "\n")
         complete_history.write(f'<p>{num_lines}</p>')
         if(comment):
@@ -220,14 +294,16 @@ def remove_rows():
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name]) > 0):
         selected_sheet = session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"), index=False)
+        df.to_csv(os.path.join(temp_folder, file_root + "_" + selected_sheet + ".csv"), index=False)
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path, index=False)
 
     return redirect(url_for('clean_data'))
 
 @app.route('/remove_nulls', methods=['POST'])
+@login_required
 def remove_nulls():
+    temp_folder = get_user_folder('temp')
     columns_to_remove = request.form.getlist('columns_to_remove')
     comment = request.form.get('comment')
     if(comment):
@@ -235,15 +311,15 @@ def remove_nulls():
     file_name = session['selected_file']
     file_root, _ = os.path.splitext(file_name)
     dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df=load_df(app)
+    file_path = os.path.join(temp_folder, file_name)
+    df=load_df(temp_folder)
     removed=df[df[columns_to_remove].isna().any(axis=1)]
     table_html = get_table(removed, request, 0, 100)
     num_lines = "Remoção de "+str(removed.shape[0])+" linhas de "+ str(df.shape[0]) + " mantendo " +str(df.shape[0]-removed.shape[0]) + " linhas"
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
-    history= load_history(app, temp=True)
+    history= load_history(temp_folder)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
     history.write(formatted_time + "Remoção de linhas com valores nulos nas colunas:" + str(columns_to_remove) + "\n</a></pre>\n")
     
@@ -257,7 +333,7 @@ def remove_nulls():
     history.write('</div>')
     history.close()
 
-    complete_history=load_history_pdf(app,temp=True)
+    complete_history=load_history_pdf(temp_folder)
     complete_history.write(formatted_time + "Remoção de linhas com valores nulos nas colunas:" + str(columns_to_remove) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -273,7 +349,7 @@ def remove_nulls():
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+        df.to_csv(os.path.join(temp_folder, file_root + "_" + selected_sheet + ".csv"),index=False)
 
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
@@ -283,7 +359,9 @@ def remove_nulls():
 
 #adicionar aviso para querys invalidas
 @app.route('/remove_query', methods=['POST'])
+@login_required
 def remove_query():
+    temp_folder = get_user_folder('temp')
     query_str = request.form.get('query_string')
     comment = request.form.get('comment')
     if(comment):
@@ -291,8 +369,8 @@ def remove_query():
     file_name = session['selected_file']
     file_root, _ = os.path.splitext(file_name)
     dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df=load_df(app)
+    file_path = os.path.join(temp_folder, file_name)
+    df=load_df(temp_folder)
     rows_to_drop=df.query(query_str)
     table_html = get_table(rows_to_drop, request, 0, 100)
 
@@ -300,7 +378,7 @@ def remove_query():
     current_time = datetime.now()
     formatted_time = current_time.strftime('[%d-%m-%Y %H:%M:%S] ')
     id =  re.sub(r'\W+', '_', formatted_time)
-    history= load_history(app, temp=True)
+    history= load_history(temp_folder)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
     history.write(formatted_time + "Removido pela query:" + query_str + "\n</a></pre>\n")
     
@@ -317,7 +395,7 @@ def remove_query():
 
 
         
-    complete_history=load_history_pdf(app,temp=True)
+    complete_history=load_history_pdf(temp_folder)
     complete_history.write(formatted_time + "Removido pela query:" + query_str+ "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -333,7 +411,7 @@ def remove_query():
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_" + selected_sheet + ".csv"),index=False)
+        df.to_csv(os.path.join(temp_folder, file_root + "_" + selected_sheet + ".csv"),index=False)
 
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path,index=False)
@@ -342,7 +420,9 @@ def remove_query():
     return redirect(url_for('clean_data'))
 
 @app.route('/apply_filters', methods=['POST'])
+@login_required
 def apply_filters():
+    temp_folder = get_user_folder('temp')
     # Carrega os filtros recebidos como JSON
     filters = request.form.getlist('filters[]')
     filter_logic = request.form.get('filter_logic', 'and')
@@ -350,7 +430,7 @@ def apply_filters():
     if(comment):
         comment="Comentário: " + comment 
     file_name = session['selected_file']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
+    file_path = os.path.join(temp_folder, file_name)
     dict_sheet_names = session['sheet_names']
     
     applied_filters = []
@@ -387,14 +467,13 @@ def apply_filters():
         
         query_conditions.append(condition)
         applied_filters.append({'column': column, 'operator': operator, 'value': value})
-    print(applied_filters)
     
     # Constrói a string de consulta usando o operador lógico selecionado
     query_string = f" {filter_logic} ".join(query_conditions)
 
 
     # Aplique a consulta ao DataFrame usando df.query
-    df = load_df(app)
+    df = load_df(temp_folder)
 
     action = request.form.get('action')
 
@@ -411,7 +490,7 @@ def apply_filters():
     id = re.sub(r'\W+', '_', formatted_time)
 
     # Salva o histórico
-    history = load_history(app, temp=True)
+    history = load_history(temp_folder)
     history.write(f'<pre><a href="#{id}" data-toggle="collapse" aria-expanded="false" aria-controls="{id}" style="cursor: pointer;">')
     history.write(formatted_time + "Removido pelos filtros:" + query_string + "\n</a></pre>\n")
     history.write(f'<div id="{id}" class="collapse">')
@@ -423,7 +502,7 @@ def apply_filters():
     history.write('</div>')
     history.close()
 
-    complete_history = load_history_pdf(app, temp=True)
+    complete_history = load_history_pdf(temp_folder)
     complete_history.write(formatted_time + "Removido pelos filtros:" + str(applied_filters) + "\n")
     complete_history.write(f'<p>{num_lines}</p>')
     if(comment):
@@ -440,7 +519,7 @@ def apply_filters():
     elif file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name]) > 0):
         selected_sheet = session['selected_sheet']
         file_root, _ = os.path.splitext(file_name)
-        df.to_csv(os.path.join(app.config['TEMP_FOLDER'], f"{file_root}_{selected_sheet}.csv"), index=False)
+        df.to_csv(os.path.join(temp_folder, f"{file_root}_{selected_sheet}.csv"), index=False)
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path, index=False)
 
@@ -452,17 +531,19 @@ def apply_filters():
 
 from xhtml2pdf import pisa
 @app.route('/export_pdf', methods=['GET'])
+@login_required
 def export_pdf():
+    upload_folder = get_user_folder('upload')
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_root, _ = os.path.splitext(file_name)
     if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
         selected_sheet=session['selected_sheet']
-        history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "_" + selected_sheet + "complete.html")
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history' + selected_sheet + '.pdf')
+        history_path = os.path.join(upload_folder, file_root + "_" + selected_sheet + "complete.html")
+        pdf_path = os.path.join(upload_folder, 'history' + selected_sheet + '.pdf')
     else:
-        history_path = os.path.join(app.config['UPLOAD_FOLDER'], file_root + "complete.html")
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], 'history' + file_root + '.pdf')
+        history_path = os.path.join(upload_folder, file_root + "complete.html")
+        pdf_path = os.path.join(upload_folder, 'history' + file_root + '.pdf')
     
 
     with open(history_path, "r") as file:
@@ -486,9 +567,11 @@ def export_pdf():
 
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
+@login_required
 def criar_tabela_continuo_route():
+    temp_folder = get_user_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
-    df = load_df(app)
+    df = load_df(temp_folder)
     tabela_continua = gerar_estatisticas_tabela(df[colunas_selecionadas])
     column_names=None
     if(df is not None):
@@ -496,7 +579,7 @@ def criar_tabela_continuo_route():
 
 
     file_root, _ = os.path.splitext(session['selected_file'])
-    tabela_continua.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv"),index=False)
+    tabela_continua.to_csv(os.path.join(temp_folder, file_root + "_exploratory_table.csv"),index=False)
 
     table_html = tabela_continua.to_html(classes='table table-striped')
 
@@ -508,9 +591,11 @@ def criar_tabela_continuo_route():
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/data_dict', methods=['GET'])
+@login_required
 def criar_data_dict_route():
+    temp_folder = get_user_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
-    df = load_df(app)
+    df = load_df(temp_folder)
     #data_dict = criar_data_dict(df[colunas_selecionadas])
     data_dict = gerar_resumo_tabela(df[colunas_selecionadas])
     column_names=None
@@ -519,7 +604,7 @@ def criar_data_dict_route():
 
 
     file_root, _ = os.path.splitext(session['selected_file'])
-    data_dict.to_csv(os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv"),index=False)
+    data_dict.to_csv(os.path.join(temp_folder, file_root + "_exploratory_table.csv"),index=False)
 
     table_html = data_dict.to_html(classes='table table-striped')
 
@@ -531,18 +616,21 @@ def criar_data_dict_route():
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/download_csv', methods=['GET'])
+@login_required
 def download_csv():
+    temp_folder = get_user_folder('temp')
     file_root, _ = os.path.splitext(session['selected_file'])
-    temp_filename = os.path.join(app.config['TEMP_FOLDER'], file_root + "_exploratory_table.csv")
+    temp_filename = os.path.join(temp_folder, file_root + "_exploratory_table.csv")
     if temp_filename and os.path.exists(temp_filename):
         return send_file( temp_filename, as_attachment=True, download_name=file_root + "_exploratory_table.csv", mimetype='text/csv')
     return "No table to download", 400
 
 @app.route('/completude_graph', methods=['GET'])
+@login_required
 def completude_graph():
-    #NAO É POSSIVEL ADICIONAR AO RELATORIO POR ENQUANTO
+    temp_folder = get_user_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
-    df = load_df(app)
+    df = load_df(temp_folder)
     column_names = df.columns.tolist() if df is not None else None
     #data_dict = criar_data_dict(df[colunas_selecionadas])
 
@@ -568,14 +656,16 @@ def completude_graph():
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
     
     file_root, _ = os.path.splitext(session['selected_file'])
-    image_filename = os.path.join(app.config['TEMP_FOLDER'], str(datetime.now().strftime("%d%m%Y%H%M%S")) + "_completude_graph.png")
+    image_filename = os.path.join(temp_folder, str(datetime.now().strftime("%d%m%Y%H%M%S")) + "_completude_graph.png")
     session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/plot_graph', methods=['POST'])
+@login_required
 def plot_graph():
+    temp_folder = get_user_folder('temp')
     x_column = request.form['x_column']
     y_column = request.form['y_column']
     chart_type = request.form['chart_type']
@@ -590,7 +680,7 @@ def plot_graph():
     x_unit = request.form.get('x_unit', '')
     y_unit = request.form.get('y_unit', '')
 
-    df = load_df(app)
+    df = load_df(temp_folder)
     column_names = df.columns.tolist() if df is not None else None
     x_min, x_max = min(df[x_column]), max(df[x_column])
     plt.figure(figsize=(width, height))
@@ -633,7 +723,7 @@ def plot_graph():
     img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
 
     file_root, _ = os.path.splitext(session['selected_file'])
-    image_filename = os.path.join(app.config['TEMP_FOLDER'], str(datetime.now().strftime("%d%m%Y%H%M%S")) + str(chart_type) + "_plot.png")
+    image_filename = os.path.join(temp_folder, str(datetime.now().strftime("%d%m%Y%H%M%S")) + str(chart_type) + "_plot.png")
     session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
@@ -641,6 +731,7 @@ def plot_graph():
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/download_plot', methods=['GET'])
+@login_required
 def download_plot():
     file_root, _ = os.path.splitext(session['selected_file'])
     temp_filename = session['image_filename']
@@ -649,12 +740,14 @@ def download_plot():
     return "No plot to download", 400
 
 @app.route('/add_table_to_history', methods=['GET'])
+@login_required
 def add_table_to_history():
+    temp_folder = get_user_folder('temp')
     table_html = session['table_html']
     print(table_html)
     try:
         # Load complete history (for HTML storage)
-        complete_history = load_history_pdf(app, temp=True)
+        complete_history = load_history_pdf(temp_folder)
 
         # Log the addition of the plot to the history
         formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -670,12 +763,14 @@ def add_table_to_history():
         return jsonify({"status": "error", "message": "Não há gráfico para adicionar a histórico"}), 400
 
 @app.route('/add_plot_to_history', methods=['GET'])
+@login_required
 def add_plot_to_history():
+    temp_folder = get_user_folder('temp')
     temp_filename = session['image_filename']
     
     if temp_filename and os.path.exists(temp_filename):
         # Load complete history (for HTML storage)
-        complete_history = load_history_pdf(app, temp=True)
+        complete_history = load_history_pdf(temp_folder)
 
         # Log the addition of the plot to the history
         formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -692,33 +787,36 @@ def add_plot_to_history():
 
 #da erro se tentar aplicar mudanças sem ter
 @app.route('/apply_file_changes', methods=['GET'])
+@login_required
 def apply_file_changes():
     try:
+        temp_folder = get_user_folder('temp')
+        upload_folder = get_user_folder('upload')
         file_name = session['selected_file']
         dict_sheet_names = session['sheet_names']
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
-        df=load_df(app)
+        file_path = os.path.join(upload_folder, file_name)
+        df=load_df(temp_folder)
         if df is None:
             df = pd.DataFrame()
-        temp_history=load_history(app,"r", temp=True)
+        temp_history=load_history(temp_folder,"r")
         content = temp_history.read()
         temp_history.close()
-        temp_history=load_history(app,"w", temp=True)
+        temp_history=load_history(temp_folder,"w")
         temp_history.close()
 
-        history=load_history(app,"a", temp=False)
+        history=load_history(upload_folder,"a")
         history.write(content)
         history.close()
 
 
 
          
-        temp_history_pdf=load_history_pdf(app,"r", temp=True)
+        temp_history_pdf=load_history_pdf(temp_folder,"r")
         content_pdf = temp_history_pdf.read()
         temp_history_pdf.close()
-        temp_history_pdf=load_history_pdf(app,"w", temp=True)
+        temp_history_pdf=load_history_pdf(temp_folder,"w")
         temp_history_pdf.close()
-        history_pdf=load_history_pdf(app,"a", temp=False)
+        history_pdf=load_history_pdf(upload_folder,"a")
         history_pdf.write(content_pdf)
         history_pdf.close() 
         
@@ -738,15 +836,18 @@ def apply_file_changes():
         return redirect(request.referrer or '/')
     
 @app.route('/discard_file_changes', methods=['GET'])
+@login_required
 def discard_file_changes():
+    temp_folder = get_user_folder('temp')
+    upload_folder = get_user_folder('upload')
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
-    file_path = os.path.join(app.config['TEMP_FOLDER'], file_name)
-    df=load_backup_df(app)
-    temp_history=load_history(app,"w", temp=True)
+    file_path = os.path.join(temp_folder, file_name)
+    df=load_backup_df(upload_folder)
+    temp_history=load_history(temp_folder,"w")
     temp_history.close()
 
-    temp_history_pdf=load_history_pdf(app,"w", temp=True)
+    temp_history_pdf=load_history_pdf(temp_folder,"w")
     temp_history_pdf.close()
     if file_name.endswith('.csv'):
         df.to_csv(file_path,index=False)
@@ -759,6 +860,7 @@ def discard_file_changes():
     return redirect(request.referrer or '/')
 
 @app.route('/')
+@login_required
 def upload():
     if 'sheet_names' not in session:
         session['sheet_names'] = {}
@@ -767,9 +869,11 @@ def upload():
     return render_template('upload.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/display', methods=['GET', 'POST'])
+@login_required
 def display():
     try:
-        df = load_df(app)
+        temp_folder = get_user_folder('temp')
+        df = load_df(temp_folder)
         column_names = df.columns.tolist()
         
         # Captura os parâmetros de paginação
@@ -868,13 +972,16 @@ def display():
         )
 
 @app.route('/download_page')
+@login_required
 def download_page():
     return render_template('download.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/clean_data',  methods=['GET', 'POST'])
+@login_required
 def clean_data():
     try:
-        df = load_df(app)
+        temp_folder = get_user_folder('temp')
+        df = load_df(temp_folder)
 
         start = request.args.get('start', default=0, type=int)
         lines_by_page = request.args.get('lines_by_page', default=100, type=int)
@@ -907,22 +1014,28 @@ def clean_data():
                                 filter_logic='and')
 
 @app.route('/exploratory_analysis')
+@login_required
 def exploratory_analysis():
-    df = load_df(app)
+    temp_folder = get_user_folder('temp')
+    df = load_df(temp_folder)
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/recommended_graphs')
+@login_required
 def recommended_graphs():
     return render_template('recommended_graphs.html',uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 @app.route('/history')
+@login_required
 def history():
     try:
-        history=load_history(app,"r",temp=False)
+
+        upload_folder = get_user_folder('upload')
+        history=load_history(upload_folder,"r")
         content = history.read()
         history.close()
         return render_template('history.html',file_history=content,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
@@ -930,11 +1043,13 @@ def history():
         return render_template('history.html',file_history=None,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @app.route('/select_file/<file_name>')
+@login_required
 def select_file(file_name):
     session['selected_file'] = file_name
     return redirect(request.referrer or '/')
 
 @app.route('/select_file/<file_name>/<sheet_name>')
+@login_required
 def select_sheet(file_name, sheet_name):
     session['selected_file'] = file_name
     session['selected_sheet'] = sheet_name

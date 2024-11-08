@@ -18,8 +18,15 @@
   height: 56px; /* Added height for alignment */
 }
 .navbar-custom .navbar-brand,
-.navbar-custom .nav-link {
+.navbar-custom .nav-link,
+.navbar-custom .navbar-text {
   color: #f8f9fa; /* Cor do texto da navbar */
+}
+.navbar-text {
+  color: white;
+}
+.nav-item.logout-link {
+  margin-right: 50px; /* Adiciona um offset à esquerda para o link 'Logout' */
 }
 
 /* SIDEBAR */
