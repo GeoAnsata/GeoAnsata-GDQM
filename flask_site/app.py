@@ -937,7 +937,7 @@ def projects():
             flash(f"Projeto '{project_name}' adicionado com sucesso!")
         else:
             flash("Projeto inválido ou já existe.")
-
+    #adicionar passagem de outros parametros quando nao for o inicio da execução
     return render_template('projects.html', projects=user_projects)
 
 
