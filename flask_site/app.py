@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, redirect, url_for, send_file, session,jsonify, json, flash
 from functools import wraps
 from utils.info_tables import *
