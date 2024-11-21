@@ -1,6 +1,9 @@
 flask
 pandas
 seaborn
-xhtml2pdf
 openpyxl
 gunicorn
+flask
+weasyprint
+cairocffi
+pillow

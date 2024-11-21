@@ -567,9 +567,8 @@ def apply_filters():
 
 
 
+from weasyprint import HTML
 
-
-from xhtml2pdf import pisa
 @app.route('/export_pdf', methods=['GET'])
 @login_required
 def export_pdf():
@@ -577,33 +576,31 @@ def export_pdf():
     file_name = session['selected_file']
     dict_sheet_names = session['sheet_names']
     file_root, _ = os.path.splitext(file_name)
-    if file_name.endswith('.xlsx') and (len(dict_sheet_names[file_name])>0):
-        selected_sheet=session['selected_sheet']
-        history_path = os.path.join(upload_folder, file_root + "_" + selected_sheet + "complete.html")
-        pdf_path = os.path.join(upload_folder, 'history' + selected_sheet + '.pdf')
+
+    # Build paths
+    if file_name.endswith('.xlsx') and len(dict_sheet_names[file_name]) > 0:
+        selected_sheet = session['selected_sheet']
+        history_path = os.path.join(upload_folder, f"{file_root}_{selected_sheet}complete.html")
+        pdf_path = os.path.join(upload_folder, f"history{selected_sheet}.pdf")
     else:
-        history_path = os.path.join(upload_folder, file_root + "complete.html")
-        pdf_path = os.path.join(upload_folder, 'history' + file_root + '.pdf')
-    
+        history_path = os.path.join(upload_folder, f"{file_root}complete.html")
+        pdf_path = os.path.join(upload_folder, f"history{file_root}.pdf")
 
-    with open(history_path, "r") as file:
-        html_content = file.read()
+    # Combine HTML content and styles
+    with open(history_path, "r") as html_file:
+        html_content = html_file.read()
 
+    with open("./templates/includes/history_pdf.html", "r") as style_file:
+        html_style = style_file.read()
 
-    with open("./templates/includes/history_pdf.html", "r") as file:
-        html_style = file.read()
+    combined_html = html_style + html_content
 
-    pdf_output = BytesIO()
+    # Generate the PDF
+    HTML(string=combined_html).write_pdf(pdf_path)
 
-    pisa.CreatePDF(html_content + html_style, dest=pdf_output, encoding='utf-8')
-
-    # Open a PDF file for writing in binary mode
-    with open(pdf_path, "wb") as pdf_file:
-    
-        # Write the PDF content to the file
-        pdf_file.write(pdf_output.getvalue())
-    
+    # Return the generated PDF
     return send_file(pdf_path, as_attachment=True)
+
 
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
