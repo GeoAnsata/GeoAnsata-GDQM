@@ -568,7 +568,7 @@ def apply_filters():
 
 
 
-from xhtml2pdf import pisa
+#from xhtml2pdf import pisa
 
 @app.route('/export_pdf', methods=['GET'])
 @login_required
@@ -594,7 +594,8 @@ def export_pdf():
 
     pdf_output = BytesIO()
     # Generate the PDF
-    pisa.CreatePDF(html_content + html_style, dest=pdf_output, encoding='utf-8')
+
+    #pisa.CreatePDF(html_content + html_style, dest=pdf_output, encoding='utf-8')
     # Open a PDF file for writing in binary mode
     with open(pdf_path, "wb") as pdf_file:
     
