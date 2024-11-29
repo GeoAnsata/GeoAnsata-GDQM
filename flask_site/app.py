@@ -103,7 +103,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'username' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('login', _external=True))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -119,7 +119,7 @@ def login():
             session.permanent = True
             session['current_project']=''
             session['projects']={}
-            return redirect(url_for('projects'))  # Redirect to base page
+            return redirect(url_for('projects', _external=True))  # Redirect to base page
         else:
             flash("Invalid credentials, please try again.")
             return render_template('login.html', error="Invalid username or password.")
@@ -136,7 +136,7 @@ def logout():
     session.pop('image_filename',None)
     session.pop('table_html',None)
     session.pop('sheet_names',None)
-    return redirect(url_for('login'))
+    return redirect(url_for('login', _external=True))
 
 
 @app.route('/upload_file', methods=['POST'])
@@ -190,7 +190,7 @@ def upload_file():
             f = open(os.path.join(upload_folder, file_root + ".txt"), "w")
             f.close()
     session['sheet_names']=dict_sheet_names
-    return redirect(url_for('upload'))
+    return redirect(url_for('upload', _external=True))
 
 
 @app.route('/download_sheet/<file_name>/<sheet_name>', methods=['GET'])
@@ -271,7 +271,7 @@ def remove_columns():
         df.to_excel(file_path,index=False)
 
 
-    return redirect(url_for('clean_data'))
+    return redirect(url_for('clean_data', _external=True))
 
 
 @app.route('/remove_rows', methods=['POST'])
@@ -339,7 +339,7 @@ def remove_rows():
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path, index=False)
 
-    return redirect(url_for('clean_data'))
+    return redirect(url_for('clean_data', _external=True))
 
 @app.route('/remove_nulls', methods=['POST'])
 @login_required
@@ -396,7 +396,7 @@ def remove_nulls():
         df.to_excel(file_path,index=False)
 
 
-    return redirect(url_for('clean_data'))
+    return redirect(url_for('clean_data', _external=True))
 
 #adicionar aviso para querys invalidas
 @app.route('/remove_query', methods=['POST'])
@@ -458,7 +458,7 @@ def remove_query():
         df.to_excel(file_path,index=False)
 
 
-    return redirect(url_for('clean_data'))
+    return redirect(url_for('clean_data', _external=True))
 
 @app.route('/apply_filters', methods=['POST'])
 @login_required
@@ -564,7 +564,7 @@ def apply_filters():
     elif file_name.endswith('.xlsx'):
         df.to_excel(file_path, index=False)
 
-    return redirect(url_for('clean_data'))
+    return redirect(url_for('clean_data', _external=True))
 
 
 
@@ -872,7 +872,7 @@ def apply_file_changes():
             df.to_excel(file_path,index=False)
     finally:
         if request.referrer and request.referrer.endswith('/plot_graph'):
-            return redirect(url_for('exploratory_analysis'))
+            return redirect(url_for('exploratory_analysis', _external=True))
         return redirect(request.referrer or '/')
     
 @app.route('/discard_file_changes', methods=['GET'])
@@ -956,10 +956,10 @@ def select_project(project_name):
         session['image_filename'] = ''
         session['table_html'] = ''
         
-        return redirect(url_for('upload'))  # Redirect to the upload page
+        return redirect(url_for('upload', _external=True))  # Redirect to the upload page
     else:
         flash("Projeto não encontrado!")
-        return redirect(url_for('projects'))
+        return redirect(url_for('projects', _external=True))
     
 
 @app.route('/')
