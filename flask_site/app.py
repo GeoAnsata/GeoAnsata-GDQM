@@ -84,7 +84,7 @@ def load_existing_files():
 
         # Process Excel files
         if file_ext == '.xlsx':
-            df = pd.read_excel(file_path, sheet_name=None)
+            df = pd.read_excel(file_path, sheet_name=None, engine="openpyxl")
             sheet_names = list(df.keys())
             if len(sheet_names) > 1:
                 dict_sheet_names[filename] = sheet_names
@@ -160,12 +160,12 @@ def upload_file():
             shutil.copy(upload_path, temp_path)
 
 
-            df = pd.read_excel(file, sheet_name=None)
+            df = pd.read_excel(file, sheet_name=None, engine="openpyxl")
             sheet_names=list(df.keys())
             if(len(sheet_names)>1):
                 dict_sheet_names[file.filename]=sheet_names
                 for sheet_name in sheet_names:
-                    df=pd.read_excel(file,sheet_name=sheet_name)
+                    df=pd.read_excel(file,sheet_name=sheet_name, engine="openpyxl")
                     df.to_csv(os.path.join(temp_folder, file_root + "_" + sheet_name + ".csv"),index=False)
                     f = open(os.path.join(temp_folder, file_root + "_" + sheet_name + ".txt"), "w")
                     f.close()                    
@@ -198,7 +198,7 @@ def upload_file():
 def download_sheet(file_name,sheet_name):
     upload_folder = get_project_folder('upload')
     file_path = os.path.join(upload_folder, file_name)
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df = pd.read_excel(file_path, sheet_name=sheet_name, engine="openpyxl")
     temp_file_path = os.path.join(tempfile.gettempdir(), f"{file_name}_{sheet_name}.csv")
     df.to_csv(temp_file_path, index=False)
 
@@ -219,7 +219,6 @@ def download_file(file_name):
         return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
 
  
-    
 @app.route('/remove_columns', methods=['POST'])
 @login_required
 def remove_columns():
@@ -567,7 +566,6 @@ def apply_filters():
     return redirect(url_for('clean_data', _external=True))
 
 
-
 #from xhtml2pdf import pisa
 
 @app.route('/export_pdf', methods=['GET'])
@@ -603,7 +601,6 @@ def export_pdf():
         pdf_file.write(pdf_output.getvalue())
     # Return the generated PDF
     return send_file(pdf_path, as_attachment=True)
-
 
 
 @app.route('/criar_tabela_continuo', methods=['GET'])
