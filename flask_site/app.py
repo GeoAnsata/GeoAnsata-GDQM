@@ -19,7 +19,7 @@ import numpy as np
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['USERS_DIR']='user_data'
-app.permanent_session_lifetime = timedelta(minutes=10)
+app.permanent_session_lifetime = timedelta(minutes=120)
 
 USERS = {
     "Adão": "123",
