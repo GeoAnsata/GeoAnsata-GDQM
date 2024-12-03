@@ -9,13 +9,13 @@
   <ul class="list-group download-list">
     {% for file, data_list in uploaded_files.items() %}
       <li class="list-group-item">
-        <a href="{{ url_for('download_file', file_name=file) }}">{{ file }}</a>
+        <a href="{{ url_for('updownload_routes.download_file', file_name=file) }}">{{ file }}</a>
 
         {% if data_list|length > 0 %}
           <ul class="list-group">
             {% for sheet in data_list %}
               <li class="list-group-item">
-                <a href="{{ url_for('download_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
+                <a href="{{ url_for('updownload_routes.download_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
               </li>
             {% endfor %}
           </ul>

@@ -57,10 +57,10 @@
             {% for filter in filters %}
                 <div>
                     {{ filter.column }} {{ filter.operator }} {{ filter.value }}
-                    <a href="{{ url_for('display', remove_filter=loop.index0) }}" class="text-danger ml-2">x</a>
+                    <a href="{{ url_for('pages_routes.display', remove_filter=loop.index0) }}" class="text-danger ml-2">x</a>
                 </div>
             {% endfor %}
-            <a href="{{ url_for('display', clear_filters=1) }}" class="btn btn-link">Limpar Todos os Filtros</a>
+            <a href="{{ url_for('pages_routes.display', clear_filters=1) }}" class="btn btn-link">Limpar Todos os Filtros</a>
         </div>
 
         <!-- Paginação -->

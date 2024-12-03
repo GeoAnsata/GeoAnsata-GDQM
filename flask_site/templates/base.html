@@ -37,8 +37,8 @@
             });
         }
 
-        handleButtonClick('apply-changes-btn', "{{ url_for('apply_file_changes') }}");
-        handleButtonClick('discard-changes-btn', "{{ url_for('discard_file_changes') }}");
+        handleButtonClick('apply-changes-btn', "{{ url_for('sidebar_routes.apply_file_changes') }}");
+        handleButtonClick('discard-changes-btn', "{{ url_for('sidebar_routes.discard_file_changes') }}");
     });
     </script>
     {% endblock %}
@@ -56,39 +56,39 @@
             <ul class="navbar-nav mr-auto">
                 {% if session.get('current_project') %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.upload') }}">Upload</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('clean_data') }}">Limpeza</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.clean_data') }}">Limpeza</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('recommended_graphs') }}">Gráficos Recomendados</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.recommended_graphs') }}">Gráficos Recomendados</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('exploratory_analysis') }}">Análise Exploratória</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.exploratory_analysis') }}">Análise Exploratória</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('display') }}">Visualização</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.display') }}">Visualização</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('download_page') }}">Download</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.download_page') }}">Download</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('history') }}">Histórico</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.history') }}">Histórico</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('projects') }}">Projetos</a>
+                    <a class="nav-link" href="{{ url_for('pages_routes.projects') }}">Projetos</a>
                 </li>
                 {% endif %}
             </ul>
             <ul class="navbar-nav ml-auto">
                 {% if session.get('username') %}
                     <li class="nav-item logout-link">
-                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        <a class="nav-link" href="{{ url_for('auth_routes.logout') }}">Logout</a>
                     </li>
                 {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                        <a class="nav-link" href="{{ url_for('auth_routes.login') }}">Login</a>
                     </li>
                 {% endif %}
             </ul>
@@ -111,7 +111,7 @@
                         {% endfor %}
                     </ul>
                     {% else %}
-                    <a href="{{ url_for('select_file', file_name=file) }}">{{ file }}</a>
+                    <a href="{{ url_for('sidebar_routes.select_file', file_name=file) }}">{{ file }}</a>
                     {% endif %}
                 </li>
                 {% endfor %}

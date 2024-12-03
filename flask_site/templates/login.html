@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container mt-5">
-        <form action="{{ url_for('login') }}" method="POST" class="mt-3">
+        <form action="{{ url_for('auth_routes.login') }}" method="POST" class="mt-3">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" class="form-control" required>

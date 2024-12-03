@@ -102,7 +102,7 @@ block content %}
   </form>
 
   <br>
-  <form id="chart-form" method="post" action="{{ url_for('plot_graph') }}">
+  <form id="chart-form" method="post" action="{{ url_for('exploratory_analysis_routes.plot_graph') }}">
     <div>
         <!-- Campos para definir as colunas e suas unidades -->
         <label for="custom_title">Título Personalizado (opcional):</label>
@@ -159,7 +159,7 @@ block content %}
   {% if image %}
   <h3>Gráfico Gerado:</h3>
   <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
-  <a href="{{ url_for('download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Gráfico</a>
+  <a href="{{ url_for('exploratory_analysis_routes.download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Gráfico</a>
     <!-- Button to trigger the add plot to history function -->
   <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Adicionar Gráfico a Histórico</button>
 
