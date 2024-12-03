@@ -31,7 +31,8 @@
 
 /* SIDEBAR */
 .sidebar {
-  display: block;
+  display: flex;
+  flex-direction: column; /* Organiza os elementos verticalmente */
   width: 250px;
   background-color: #f8f9fa;
   padding: 15px;
@@ -40,35 +41,46 @@
   bottom: 0;
   right: 0;
   z-index: 1001;
-  overflow-y: clip;
+  overflow: hidden; /* Evita vazamento de conteúdo */
 }
+
 .sidebar h4 {
   background-color: #1d265f; /* Fundo azul */
   color: #f8f9fa; /* Texto branco */
   padding: 15px;
   margin: -15px -15px 10px -15px; /* Ajusta o espaçamento */
   cursor: pointer;
-  height: 56px; /* Added height for alignment */
+  height: 56px; /* Altura fixa para alinhamento */
   display: flex;
   align-items: center; /* Alinha verticalmente o texto */
 }
-.list-group-item {
-  margin: 0px 0; /* Adjust margin as needed */
-}
-.list-group-item a {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-decoration: none;
-  color: #007bff;
+
+.list-group {
+  flex-grow: 1; /* Permite que a lista ocupe o espaço disponível */
+  overflow-y: auto; /* Adiciona rolagem apenas à lista */
+  margin-bottom: 20px; /* Espaçamento inferior para separar dos botões */
 }
 
-.list-group-item.selected {
-  background-color: #d1ecf1 !important;
+.list-group-item {
+  margin: 0; /* Ajusta a margem */
+  word-wrap: break-word; /* Permite quebra de texto */
+  overflow-wrap: break-word; /* Garante quebra em navegadores mais novos */
+}
+
+.list-group-item a {
+  white-space: normal; /* Permite quebras de linha */
+  text-overflow: ellipsis; /* Exibe "..." se texto for muito longo */
+  text-decoration: none;
+  color: #007bff;
+  display: block;
 }
 
 .list-group-item a:hover {
   text-decoration: underline;
+}
+
+.list-group-item.selected {
+  background-color: #d1ecf1 !important;
 }
 
 .selected {
@@ -76,23 +88,23 @@
 }
 
 .button-container {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
+  position: sticky; /* Botões ficam fixos no final da sidebar */
+  bottom: 0;
+  background-color: #f8f9fa; /* Fundo para destacar os botões */
+  padding: 15px;
+  border-top: 1px solid #ddd; /* Linha divisória para separar os botões */
   text-align: center;
 }
 
 .button-container .btn {
-  width: 80%;
+  width: 90%; /* Ajusta o tamanho dos botões */
   margin: 10px 0;
   padding: 10px 20px;
   font-size: 16px;
 }
 
 .small-btn {
-  width: 80%;
+  width: 90%;
   margin: 10px 0;
   padding: 5px 10px;
   font-size: 12px;
@@ -107,6 +119,7 @@
   background-color: transparent;
   border: none;
 }
+
 #toggle-sidebar-btn img {
   height: 40px;
 }
