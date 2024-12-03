@@ -959,6 +959,31 @@ def select_project(project_name):
         return redirect(url_for('projects', _external=True))
     
 
+@app.route('/delete_project/<project_name>', methods=['POST'])
+@login_required
+def delete_project(project_name):
+    username = session.get('username')
+    user_projects = session.get('projects').get(username, [])
+    
+    if project_name in user_projects:
+        # Remova o projeto da lista de projetos do usuário
+        user_projects.remove(project_name)
+        session['projects'][username] = user_projects
+        
+        # Remova os arquivos e diretórios associados ao projeto
+        project_folder = os.path.join(app.config['USERS_DIR'], username, project_name)
+        if os.path.exists(project_folder):
+            shutil.rmtree(project_folder)
+        if(session.get('current_project')==project_name):
+            session['current_project']=''
+        
+        flash(f"Projeto '{project_name}' foi excluído com sucesso.")
+    else:
+        flash(f"Projeto '{project_name}' não encontrado.")
+    
+    return redirect(url_for('projects', _external=True))
+
+
 @app.route('/')
 @login_required
 def upload():

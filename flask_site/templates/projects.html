@@ -6,10 +6,14 @@
 <div class="container mt-5">
     <h2>Selecione ou Adicione um Projeto</h2>
     {% if projects %}
-        <ul>
+        <ul style="list-style: none; padding: 0;">
             {% for project in projects %}
-                <li>
-                    <a href="{{ url_for('select_project', project_name=project) }}">{{ project }}</a>
+                <li style="margin-bottom: 8px;">
+                    <a href="{{ url_for('select_project', project_name=project) }}" style="text-decoration: none;">{{ project }}</a>
+
+                    <form method="POST" action="{{ url_for('delete_project', project_name=project) }}" style="display: inline;" onsubmit="return confirmDelete('{{ project }}');">
+                        <button type="submit" style="border: none; background: none; color: black; cursor: pointer; margin-right: 6px;">x</button>
+                    </form>
                 </li>
             {% endfor %}
         </ul>
@@ -24,4 +28,12 @@
         <button type="submit">Adicionar Projeto</button>
     </form>
 </div>
+
+<script>
+    function confirmDelete(projectName) {
+        const input = prompt(`Digite o nome do projeto para confirmar a exclusão: "${projectName}"`);
+        return input === projectName;
+    }
+</script>
+
 {% endblock %}
