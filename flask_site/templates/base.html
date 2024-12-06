@@ -10,20 +10,26 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             var sidebar = document.querySelector(".sidebar");
             var toggleBtn = document.getElementById("toggle-sidebar-btn");
             var sidebarTitle = document.getElementById("sidebar-title");
-
-            sidebarTitle.addEventListener("click", function() {
-                sidebar.style.display = "none";
-                toggleBtn.style.display = "block";
-            });
-
-            toggleBtn.addEventListener("click", function() {
-                sidebar.style.display = "block";
-                toggleBtn.style.display = "none";
-            });
+    
+            function hideSidebar() {
+                sidebar.classList.remove("show");
+                toggleBtn.style.display = "block"; // Show the toggle button
+            }
+    
+            function showSidebar() {
+                sidebar.classList.add("show");
+                toggleBtn.style.display = "none"; // Hide the toggle button
+            }
+    
+            // Hide the sidebar when the title is clicked
+            sidebarTitle.addEventListener("click", hideSidebar);
+    
+            // Show the sidebar when the toggle button is clicked
+            toggleBtn.addEventListener("click", showSidebar);
         });
     </script>
     {% block scripts %}

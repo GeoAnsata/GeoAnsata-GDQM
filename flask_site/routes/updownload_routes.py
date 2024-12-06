@@ -80,7 +80,6 @@ def download_sheet(file_name,sheet_name):
 @login_required
 def download_file(file_name):
     upload_folder = get_project_folder('upload')
-    temp_folder = get_project_folder('temp')
     file_path = os.path.join(upload_folder, file_name)
     
     if file_path.endswith('.xlsx'):

@@ -45,7 +45,13 @@
   bottom: 0;
   right: 0;
   z-index: 1001;
-  overflow: hidden; /* Evita vazamento de conteúdo */
+  overflow-y: auto; /* Permite rolagem vertical */
+  transition: transform 0.3s ease; /* Adiciona transição suave para entrada/saída */
+  transform: translateX(100%); /* Oculta a barra lateral inicialmente */
+}
+
+.sidebar.show {
+  transform: translateX(0); /* Mostra a barra lateral */
 }
 
 .sidebar h4 {
@@ -64,6 +70,16 @@
   overflow-y: auto; /* Adiciona rolagem apenas à lista */
   margin-bottom: 20px; /* Espaçamento inferior para separar dos botões */
 }
+
+.button-container {
+  position: sticky; /* Botões ficam fixos no final da sidebar */
+  bottom: 0;
+  background-color: #f8f9fa; /* Fundo para destacar os botões */
+  padding: 15px;
+  border-top: 1px solid #ddd; /* Linha divisória para separar os botões */
+  text-align: center;
+}
+
 
 .list-group-item {
   margin: 0; /* Ajusta a margem */
@@ -91,14 +107,6 @@
   background-color: #a6d6de;
 }
 
-.button-container {
-  position: sticky; /* Botões ficam fixos no final da sidebar */
-  bottom: 0;
-  background-color: #f8f9fa; /* Fundo para destacar os botões */
-  padding: 15px;
-  border-top: 1px solid #ddd; /* Linha divisória para separar os botões */
-  text-align: center;
-}
 
 .button-container .btn {
   width: 90%; /* Ajusta o tamanho dos botões */
@@ -115,13 +123,14 @@
 }
 
 #toggle-sidebar-btn {
-  display: none;
+  display: block; /* Ensure it's visible by default */
   position: fixed;
   top: 10px;
   right: 10px;
-  z-index: 1001;
+  z-index: 1002; /* Above the sidebar */
   background-color: transparent;
   border: none;
+  cursor: pointer;
 }
 
 #toggle-sidebar-btn img {
