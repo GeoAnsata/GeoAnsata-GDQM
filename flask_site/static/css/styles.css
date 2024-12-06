@@ -12,6 +12,10 @@
   width: 100%;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /* NAVBAR */
 .navbar-custom {
   background-color: #1d265f; /* Cor personalizada da navbar */
