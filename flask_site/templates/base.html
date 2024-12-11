@@ -112,7 +112,7 @@
                     <ul>
                         {% for sheet in data_list %}
                         <li class="{% if file == selected_file and sheet == selected_sheet %}selected{% endif %}">
-                            <a href="{{ url_for('select_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
+                            <a href="{{ url_for('sidebar_routes.select_sheet', file_name=file, sheet_name=sheet) }}">{{ sheet }}</a>
                         </li>
                         {% endfor %}
                     </ul>
