@@ -5,5 +5,19 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Gráficos Recomendados</h2>
+    <ul class="list-group mt-3">
+        <li class="list-group-item">
+            <a href="{{ url_for('pages_routes.analysis_preliminary') }}">Análise Preliminar</a>
+        </li>
+        <li class="list-group-item">
+            <a href="{{ url_for('pages_routes.collar') }}">Collar</a>
+        </li>
+        <li class="list-group-item">
+            <a href="{{ url_for('pages_routes.survey') }}">Survey</a>
+        </li>
+        <li class="list-group-item">
+            <a href="{{ url_for('pages_routes.grades') }}">Teores</a>
+        </li>
+    </ul>
 </div>
 {% endblock %}

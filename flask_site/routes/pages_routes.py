@@ -181,6 +181,27 @@ def exploratory_analysis():
 def recommended_graphs():
     return render_template('recommended_graphs.html',uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+@pages_routes.route('/base_analysis')
+@login_required
+def analysis_preliminary():
+    return render_template('base_analysis.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+@pages_routes.route('/collar')
+@login_required
+def collar():
+    return render_template('collar.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+@pages_routes.route('/survey')
+@login_required
+def survey():
+    return render_template('survey.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+@pages_routes.route('/teores')
+@login_required
+def grades():
+    return render_template('teores.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+
 
 @pages_routes.route('/history')
 @login_required
