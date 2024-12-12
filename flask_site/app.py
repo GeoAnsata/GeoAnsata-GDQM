@@ -12,6 +12,7 @@ from routes.projects_routes import projects_routes
 from routes.updownload_routes import updownload_routes
 from routes.base_analysis_routes import base_analysis_routes
 from routes.collar_routes import collar_routes
+from routes.survey_routes import survey_routes
 
 
 
@@ -30,6 +31,7 @@ app.register_blueprint(projects_routes)
 app.register_blueprint(updownload_routes)
 app.register_blueprint(base_analysis_routes)
 app.register_blueprint(collar_routes)
+app.register_blueprint(survey_routes)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

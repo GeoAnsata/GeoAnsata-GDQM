@@ -9,7 +9,6 @@ from utils.load_df import load_df
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
-import base64
 
 
 collar_routes = Blueprint('collar_routes', __name__)

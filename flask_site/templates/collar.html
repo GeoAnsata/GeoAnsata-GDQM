@@ -3,13 +3,11 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Análise Collar</h2>
-
     <a href="{{ url_for('collar_routes.export_collar_pdf') }}" class="btn btn-primary" id="generateCollarPdf">Baixar Análise</a>
-
     <div class="mt-5">
         <h3>Criação de Gráficos</h3>
         <p>
-            Selecione as colunas relevantes para criar os seguintes gráficos:
+            Selecione o arquivo collar e, em seguida, selecione as colunas relevantes para criar os seguintes gráficos:
             <ul>
                 <li><strong>Gráficos de Barra</strong>: Número de furos por ano e número de metros por ano.</li>
                 <li><strong>Mapa XZ</strong>: Localizações dos furos divididas por ano de sondagem.</li>

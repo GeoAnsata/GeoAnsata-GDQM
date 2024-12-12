@@ -1,7 +1,9 @@
 import os
 import pandas as pd
-from flask import Blueprint, request, session, render_template, flash,current_app
-
+from flask import Blueprint, request, session, render_template, flash,current_app, jsonify
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 from utils.auth_utils import login_required
 from utils.project_utils import get_project_folder, get_existing_projects
 from utils.load_df import load_df,load_history
@@ -212,14 +214,10 @@ def collar():
         column_names = df.columns.tolist()
     return render_template('collar.html', uploaded_files=session['sheet_names'], column_names=column_names, image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
-@pages_routes.route('/survey')
-@login_required
-def survey():
-    return render_template('survey.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @pages_routes.route('/teores')
 @login_required
-def grades():
+def teores():
     return render_template('teores.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 

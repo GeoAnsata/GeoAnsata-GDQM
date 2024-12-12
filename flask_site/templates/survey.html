@@ -1,10 +1,171 @@
 {% extends "base.html" %}
-
-{% block title %}Survey{% endblock %}
-
+{% block title %}Análise Survey{% endblock %}
 {% block content %}
 <div class="container mt-5">
-    <h2>Survey</h2>
-    <p>Conteúdo em desenvolvimento.</p>
-</div>
+    <h2>Análise Survey</h2>
+    <a href="{{ url_for('survey_routes.export_survey_pdf') }}" class="btn btn-primary" id="generateSurveyPdf">Baixar Análise</a>
+
+    <p>
+        Use o formulário abaixo para selecionar as colunas relevantes para análise:
+    </p>
+
+    <!-- Form for column selection -->
+    <form method="POST" action="/survey" class="mt-4">
+        <div class="form-group">
+            <label for="dip_column">Coluna para Ângulo de Inclinação (Dip):</label>
+            <select id="dip_column" name="dip_column" class="form-control" required>
+                <option value="">Selecione uma coluna</option>
+                {% for column in column_names %}
+                <option value="{{ column }}" {% if selected_columns and selected_columns['dip_column'] == column %}selected{% endif %}>
+                    {{ column }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group mt-3">
+            <label for="max_depth_column">Coluna para Profundidade Máxima (Max Depth):</label>
+            <select id="max_depth_column" name="max_depth_column" class="form-control" required>
+                <option value="">Selecione uma coluna</option>
+                {% for column in column_names %}
+                <option value="{{ column }}" {% if selected_columns and selected_columns['max_depth_column'] == column %}selected{% endif %}>
+                    {{ column }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group mt-3">
+            <label for="initial_depth_column">Coluna para Profundidade Inicial (Initial Depth):</label>
+            <select id="initial_depth_column" name="initial_depth_column" class="form-control" required>
+                <option value="">Selecione uma coluna</option>
+                {% for column in column_names %}
+                <option value="{{ column }}" {% if selected_columns and selected_columns['initial_depth_column'] == column %}selected{% endif %}>
+                    {{ column }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group mt-3">
+            <label for="hole_id_column">Coluna para Identificador do Furo (Hole_ID):</label>
+            <select id="hole_id_column" name="hole_id_column" class="form-control" required>
+                <option value="">Selecione uma coluna</option>
+                {% for column in column_names %}
+                <option value="{{ column }}" {% if selected_columns and selected_columns['hole_id_column'] == column %}selected{% endif %}>
+                    {{ column }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-4">Gerar Análise</button>
+    </form>
+
+    <!-- Analysis Results -->
+    {% if bar_chart_path and scatter_chart_path %}
+    <div class="mt-5">
+        <h3>Resultados da Análise</h3>
+
+        <!-- Bar Chart -->
+        <div>
+            <h4>Gráfico de Barra: Furos a -90 Graus vs Outros Ângulos</h4>
+            <img src="{{ url_for('static', filename=bar_chart_path) }}" class="img-fluid" alt="Dip Comparison Chart">
+            <a href="{{ url_for('survey_routes.download_plot', filename='dip_comparison.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-to-survey" data-image="dip_comparison.png">Adicionar ao Survey</button>
+        </div>
+
+        <!-- Analysis of Deep Holes -->
+        <div class="mt-5">
+            <h4>Análise de Furos com Mais de 100 Metros</h4>
+            <ul>
+                <li><strong>Total de Furos:</strong> {{ deep_hole_analysis['total_deep_holes'] }}</li>
+                <li><strong>Profundidade Média:</strong> {{ deep_hole_analysis['avg_depth'] }} metros</li>
+                <li><strong>Comprimento Médio do Trecho:</strong> {{ deep_hole_analysis['avg_segment_length'] }} metros</li>
+                <li><strong>Desvio Padrão do Comprimento:</strong> {{ deep_hole_analysis['std_segment_length'] }} metros</li>
+                <li><strong>Distribuição dos Ângulos de Inclinação (DIP):</strong></li>
+                <ul>
+                    {% for dip, count in deep_hole_analysis['dip_distribution'].items() %}
+                    <li>{{ dip }} graus: {{ count }} furos</li>
+                    {% endfor %}
+                </ul>
+            </ul>
+            <button class="btn btn-secondary mt-2 add-analysis-to-survey" data-analysis="
+            Total de Furos: {{ deep_hole_analysis['total_deep_holes'] }} <br>
+            Profundidade Média: {{ deep_hole_analysis['avg_depth'] }} metros <br>
+            Comprimento Médio do Trecho: {{ deep_hole_analysis['avg_segment_length'] }} metros <br>
+            Desvio Padrão do Comprimento: {{ deep_hole_analysis['std_segment_length'] }} metros <br>
+            Distribuição dos Ângulos de Inclinação (DIP): {{ deep_hole_analysis['dip_distribution'] }}
+            ">Adicionar Análise ao Survey</button>
+        </div>
+
+        <!-- Scatter Plot -->
+        <div class="mt-5">
+            <h4>Dispersão: Comprimento dos Trechos Analisados</h4>
+            <img src="{{ url_for('static', filename=scatter_chart_path) }}" class="img-fluid" alt="Segment Length Scatter Plot">
+            <a href="{{ url_for('survey_routes.download_plot', filename='segment_length_scatter.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-to-survey" data-image="segment_length_scatter.png">Adicionar ao Survey</button>
+        </div>
+    </div>
+    {% endif %}
+    {% include 'includes/plothistorymodal.html' %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    // Buttons for adding analysis to survey
+    const addAnalysisButtons = document.querySelectorAll(".add-analysis-to-survey");
+    const addToSurveyButtons = document.querySelectorAll(".add-to-survey");
+
+    const handleResponse = (data) => {
+        console.log("Response data:", data); // Debugging
+        const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            new bootstrap.Modal(modal).show();
+        } else {
+            console.error(`Modal with ID ${modalId} not found.`);
+        }
+    };
+
+    // Handle adding analysis text
+    addAnalysisButtons.forEach(button => {
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+            const analysisText = this.getAttribute("data-analysis");
+
+            fetch(`/add_analysis_to_survey`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ analysis_text: analysisText }),
+            })
+                .then(response => response.json())
+                .then(handleResponse)
+                .catch(error => {
+                    console.error("Error:", error);
+                    new bootstrap.Modal(document.getElementById('errorModal')).show();
+                });
+        });
+    });
+
+    // Handle adding plots
+    addToSurveyButtons.forEach(button => {
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    const imageName = this.getAttribute("data-image");
+    
+                    fetch(`/add_plot_to_survey/${imageName}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                            new bootstrap.Modal(document.getElementById(modalId)).show();
+                        })
+                        .catch(error => {
+                            new bootstrap.Modal(document.getElementById('errorModal')).show();
+                            console.error("Erro ao adicionar ao arquivo:", error);
+                        });
+                });
+            });
+        });
+</script>
 {% endblock %}
