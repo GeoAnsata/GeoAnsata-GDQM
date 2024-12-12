@@ -3,6 +3,13 @@
  {%block content %}
     <div class="container mt-5">
       <h2>Análise Preeliminar</h2>
+      <p class="lead">
+        Recomendamos que você selecione os arquivos que considerar relevantes e, em seguida, 
+        gere tabelas e gráficos para as colunas que julgar importantes. Isso ajudará na análise 
+        detalhada dos dados. Adicione as tabelas e gráficos que desejar ao pdf clicando no botão abaixo delas.
+    </p>
+      <a href="{{ url_for('base_analysis_routes.export_base_analysis_pdf') }}" class="btn btn-primary" id="generateBaseAnalysisPdf">Baixar Análise</a>
+
       <form action="/criar_tabela_continuo"
         method="GET"
         class="mt-3"
@@ -98,14 +105,14 @@
         <h2>Tabela:</h2>
         <div class="table-responsive">{{ table | safe }}</div>
         <a href="#" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
-        <button class="btn btn-secondary mt-3" id="addTableToHistoryButton">Adicionar Tabela a Histórico</button>
+        <button class="btn btn-secondary mt-3" id="addTableToHistoryButton">Adicionar Tabela a Pdf</button>
       </div>
       {% endif %}
       {% if image %}
       <h2>Gráfico Gerado:</h2>
       <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
       <a href="{{ url_for('exploratory_analysis_routes.download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Gráfico</a>
-      <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Adicionar Gráfico a Histórico</button>
+      <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Adicionar Gráfico a Pdf</button>
     
       {% endif %}
       {% include 'includes/plothistorymodal.html' %}
@@ -119,7 +126,7 @@
               addPlotButton.addEventListener("click", function (event) {
                   event.preventDefault();
                   
-                  fetch("/add_plot_to_history")
+                  fetch("/add_plot_to_base_analysis")
                       .then(response => response.json())
                       .then(data => {
                           const modalId = data.status === "success" ? 'successModal' : 'errorModal';
@@ -138,7 +145,7 @@
               addTableButton.addEventListener("click", function (event) {
                   event.preventDefault();
                   
-                  fetch("/add_table_to_history")
+                  fetch("/add_table_to_base_analysis")
                       .then(response => response.json())
                       .then(data => {
                           const modalId = data.status === "success" ? 'successModal' : 'errorModal';

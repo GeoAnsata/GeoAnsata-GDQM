@@ -185,6 +185,11 @@ def recommended_graphs():
 @login_required
 def base_analysis():
     temp_folder = get_project_folder('temp')
+    base_analysis_file = os.path.join(temp_folder, 'base_analysis.html')
+    if not os.path.exists(base_analysis_file):
+        with open(base_analysis_file, 'w') as f:
+            f.write("<h1>Análise Preeliminar</h1>\n")
+
     df = load_df(temp_folder)
     column_names=None
     if(df is not None):

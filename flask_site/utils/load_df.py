@@ -47,6 +47,8 @@ def load_history_pdf(folder,acess_mode="a"):
         return history
     except:
         return None
+    
+
 
 def load_backup_df(upload_folder):
     try:
