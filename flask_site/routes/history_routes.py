@@ -31,9 +31,16 @@ def export_pdf():
         html_content = file.read()
     with open("./templates/includes/history_pdf.html", "r") as file:
         html_style = file.read()
+
+    html_content = f"""
+    <div>
+        {html_content}  <!-- Include the complete table HTML -->
+    </div>
+    {html_style}  <!-- Include the updated styles -->
+    """
     pdf_output = BytesIO()
     # Generate the PDF
-    pisa.CreatePDF(html_content + html_style, dest=pdf_output, encoding='utf-8')
+    pisa.CreatePDF(html_content, dest=pdf_output, encoding='utf-8')
     # Open a PDF file for writing in binary mode
     with open(pdf_path, "wb") as pdf_file:
     
