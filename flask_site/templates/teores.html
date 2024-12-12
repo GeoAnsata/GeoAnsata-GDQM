@@ -1,10 +1,80 @@
 {% extends "base.html" %}
-
-{% block title %}Teores{% endblock %}
-
+{% block title %}Análise Teores{% endblock %}
 {% block content %}
 <div class="container mt-5">
-    <h2>Teores</h2>
-    <p>Conteúdo em desenvolvimento.</p>
+    <h2>Análise Teores</h2>
+    <a href="{{ url_for('teores_routes.export_teores_pdf') }}" class="btn btn-primary" id="generateTeoresPdf">Baixar Análise</a>
+    <div class="mt-5">
+        <h3>Criação de Gráficos</h3>
+        <form id="boxplot-options-form" method="POST" action="{{ url_for('teores_routes.generate_boxplots') }}">
+            <div class="form-group">
+                <label>Selecione as colunas relevantes para gerar um gráfico de boxplot com os teores:</label><br>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="select_all" />
+                    <label class="form-check-label" for="select_all">Selecionar Todas</label>
+                </div>
+                {% for coluna in column_names %}
+                <div class="form-check form-check-inline">
+                    <input
+                        class="form-check-input data-dict-checkbox"
+                        type="checkbox"
+                        name="selected_columns"
+                        value="{{ coluna }}"
+                        id="dict_{{ coluna }}"
+                    />
+                    <label class="form-check-label" for="dict_{{ coluna }}">{{ coluna }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Gerar Gráficos</button>
+        </form>
+    </div>
+
+    {% if plot_files %}
+    <div class="mt-5">
+        <h3>Gráficos Gerados</h3>
+        <div>
+            <h4>Boxplot</h4>
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename=plot_files['boxplot']) }}" class="img-fluid" alt="Boxplot">
+            <a href="{{ url_for('teores_routes.download_plot', filename='boxplots_selected_columns.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-image-to-teores" data-image="boxplots_selected_columns.png">Adicionar ao Arquivo</button>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% include 'includes/plothistorymodal.html' %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const selectAllCheckbox = document.getElementById("select_all");
+            const columnCheckboxes = document.querySelectorAll(".data-dict-checkbox");
+
+            selectAllCheckbox.addEventListener("change", function () {
+                const isChecked = this.checked;
+                columnCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+            });
+
+            const addImageButtons = document.querySelectorAll(".add-image-to-teores");
+            addImageButtons.forEach(button => {
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    const imageName = this.getAttribute("data-image");
+
+                    fetch(`/add_plot_to_teores/${imageName}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                            new bootstrap.Modal(document.getElementById(modalId)).show();
+                        })
+                        .catch(error => {
+                            new bootstrap.Modal(document.getElementById('errorModal')).show();
+                            console.error("Erro ao adicionar ao arquivo:", error);
+                        });
+                });
+            });
+        });
+    </script>
 </div>
 {% endblock %}

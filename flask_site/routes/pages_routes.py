@@ -293,7 +293,17 @@ def survey():
 @pages_routes.route('/teores')
 @login_required
 def teores():
-    return render_template('teores.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+    temp_folder = get_project_folder('temp')
+    teores_file = os.path.join(temp_folder, 'teores.html')
+    if not os.path.exists(teores_file):
+        with open(teores_file, 'w') as f:
+            f.write("<h1>Análise Teores</h1>\n")
+
+    df = load_df(temp_folder)
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+    return render_template('teores.html', uploaded_files=session['sheet_names'], column_names=column_names, image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 
 
