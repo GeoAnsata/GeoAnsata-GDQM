@@ -64,24 +64,24 @@
         <h3>Gráficos Gerados</h3>
         <div>
             <h4>Número de Furos por Ano</h4>
-            <img src="{{ url_for('static', filename=plot_files['holes_per_year']) }}" class="img-fluid" alt="Número de Furos por Ano">
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='holes_per_year.png') }}" class="img-fluid" alt="Número de Furos por Ano">
             <a href="{{ url_for('collar_routes.download_plot', filename='holes_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
             <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="holes_per_year.png">Adicionar ao Arquivo</button>
         </div>
         <div>
             <h4>Número de Metros por Ano</h4>
-            <img src="{{ url_for('static', filename=plot_files['meters_per_year']) }}" class="img-fluid" alt="Número de Metros por Ano">
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='meters_per_year.png') }}" class="img-fluid" alt="Número de Metros por Ano">
             <a href="{{ url_for('collar_routes.download_plot', filename='meters_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
             <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="meters_per_year.png">Adicionar ao Arquivo</button>
         </div>
         <div>
             <h4>Mapa XY das Localizações dos Furos</h4>
-            <img src="{{ url_for('static', filename=plot_files['map_xy']) }}" class="img-fluid" alt="Mapa XY das Localizações">
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='map_xy.png') }}" class="img-fluid" alt="Mapa XY das Localizações">
             <a href="{{ url_for('collar_routes.download_plot', filename='map_xy.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
             <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="map_xy.png">Adicionar ao Arquivo</button>
         </div>
     </div>
-    {% endif %}
+    {% endif %}    
     
     {% include 'includes/plothistorymodal.html' %}
     

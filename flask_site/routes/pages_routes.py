@@ -214,6 +214,81 @@ def collar():
         column_names = df.columns.tolist()
     return render_template('collar.html', uploaded_files=session['sheet_names'], column_names=column_names, image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+@pages_routes.route('/survey', methods=['GET','POST'])
+@login_required
+def survey():
+    temp_folder = get_project_folder('temp')  # Usar pasta temporária do projeto
+    survey_file = os.path.join(temp_folder, 'survey.html')
+    if not os.path.exists(survey_file):
+        with open(survey_file, 'w') as f:
+            f.write("<h1>Análise Survey</h1>\n")
+    
+    df = load_df(temp_folder)  # Carregar dados para análise
+    column_names = df.columns.tolist() if df is not None else []
+
+    if request.method == 'POST':
+        # Recuperar colunas definidas pelo usuário
+        dip_column = request.form.get('dip_column')
+        max_depth_column = request.form.get('max_depth_column')
+        initial_depth_column = request.form.get('initial_depth_column')
+        hole_id_column = request.form.get('hole_id_column')
+
+        if not all([dip_column, max_depth_column, initial_depth_column, hole_id_column]):
+            return jsonify({"error": "Selecione todas as colunas necessárias para a análise."}), 400
+
+        # Certificar que as colunas são numéricas
+        df[max_depth_column] = pd.to_numeric(df[max_depth_column], errors='coerce')
+        df[initial_depth_column] = pd.to_numeric(df[initial_depth_column], errors='coerce')
+        df[dip_column] = pd.to_numeric(df[dip_column], errors='coerce')
+
+        # Cálculos e gráficos
+        df['Segment Length'] = df[max_depth_column] - df[initial_depth_column]
+
+        # Gráfico de Barras
+        plt.figure(figsize=(10, 6))
+        is_90_deg = df[df[dip_column] == -90].shape[0]
+        not_90_deg = df[df[dip_column] != -90].shape[0]
+        plt.bar(['-90 Degrees', 'Other'], [is_90_deg, not_90_deg], color=['green', 'blue'])
+        plt.title("Furos com -90 Graus vs. Outros Ângulos de Perfuração")
+        plt.ylabel("Número de furos")
+        bar_chart_path = os.path.join(temp_folder, 'dip_comparison.png')
+        plt.savefig(bar_chart_path)
+        plt.close()
+
+        # Scatter Plot
+        plt.figure(figsize=(10, 6))
+        plt.scatter(df[hole_id_column], df['Segment Length'], alpha=0.7, c='orange')
+        plt.title("Comprimento de Segmento dos Furos")
+        plt.xlabel("ID do Furo")
+        plt.ylabel("Comprimento do Segmento (metros)")
+        scatter_chart_path = os.path.join(temp_folder, 'segment_length_scatter.png')
+        plt.savefig(scatter_chart_path)
+        plt.close()
+
+        return render_template(
+            'survey.html',
+            column_names=column_names,
+            bar_chart_path=f'temp/dip_comparison.png',
+            scatter_chart_path=f'temp/segment_length_scatter.png',
+            deep_hole_analysis={
+                'total_deep_holes': len(df[df[max_depth_column] > 100]),
+                'avg_depth': df[max_depth_column].mean(),
+                'avg_segment_length': df['Segment Length'].mean(),
+                'std_segment_length': df['Segment Length'].std(),
+                'dip_distribution': df[dip_column].value_counts().to_dict(),
+            },
+            selected_columns={
+                'dip_column': dip_column,
+                'max_depth_column': max_depth_column,
+                'initial_depth_column': initial_depth_column,
+                'hole_id_column': hole_id_column,
+            }
+        )
+
+
+    # Render initial page without results
+    return render_template('survey.html', column_names=column_names,uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
 
 @pages_routes.route('/teores')
 @login_required

@@ -43,37 +43,13 @@ def export_collar_pdf():
     return send_file(pdf_path, as_attachment=True)
 
 
-@collar_routes.route('/add_plot_to_collar/<image_name>', methods=['GET'])
-@login_required
-def add_plot_to_collar(image_name):
-    temp_folder = get_project_folder('temp')
-    collar_file = os.path.join(temp_folder, 'collar.html')
-    static_temp_folder = os.path.join('static', 'temp')
-    image_path = os.path.join(static_temp_folder, image_name)
-
-    # Check if the image exists
-    if os.path.exists(image_path):
-        with open(collar_file, "a") as file:  # Append to the existing collar.html file
-            # Log the addition of the plot
-            formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-            file.write(f'<p>{formatted_time} - Gráfico adicionado:</p>')
-            # Add the image to the file
-            file.write(f'<img src="{image_path}" alt="{image_name}" style="width:100%; max-width:600px;"/>')
-
-        # Return success response
-        return jsonify({"status": "success", "message": f"Imagem {image_name} adicionada ao arquivo collar.html"}), 200
-
-    return jsonify({"status": "error", "message": f"Imagem {image_name} não encontrada"}), 400
-
-
-
 @collar_routes.route('/generate_custom_charts', methods=['POST'])
 @login_required
 def generate_custom_charts():
-    static_temp_folder = os.path.join('static', 'temp')  # Correct path for static files
-    os.makedirs(static_temp_folder, exist_ok=True)
+    temp_folder = get_project_folder('temp')  # Usar pasta temporária
+    os.makedirs(temp_folder, exist_ok=True)
 
-    df = load_df(get_project_folder('temp'))
+    df = load_df(temp_folder)
 
     # Columns selected by the user
     year_column = request.form.get('year_column')
@@ -81,12 +57,9 @@ def generate_custom_charts():
     x_column = request.form.get('x_column')
     y_column = request.form.get('y_column')
 
-    # Validate columns
     if not all([year_column, depth_column, x_column, y_column]):
         return jsonify({"error": "Selecione todas as colunas necessárias."}), 400
 
-    # Dictionary to store file paths for the plots
-    plot_files = {}
 
     # Plot 1: Number of holes per year
     plt.figure(figsize=(10, 6))
@@ -95,10 +68,9 @@ def generate_custom_charts():
     plt.xlabel("Ano")
     plt.ylabel("Número de Furos")
     plt.grid(True)
-    holes_per_year_file = os.path.join(static_temp_folder, 'holes_per_year.png')
+    holes_per_year_file = os.path.join(temp_folder, 'holes_per_year.png')
     plt.savefig(holes_per_year_file)
     plt.close()
-    plot_files['holes_per_year'] = 'temp/holes_per_year.png'
 
     # Plot 2: Number of meters per year
     plt.figure(figsize=(10, 6))
@@ -107,10 +79,9 @@ def generate_custom_charts():
     plt.xlabel("Ano")
     plt.ylabel("Metros")
     plt.grid(True)
-    meters_per_year_file = os.path.join(static_temp_folder, 'meters_per_year.png')
+    meters_per_year_file = os.path.join(temp_folder, 'meters_per_year.png')
     plt.savefig(meters_per_year_file)
     plt.close()
-    plot_files['meters_per_year'] = 'temp/meters_per_year.png'
 
     # Plot 3: XY map divided by year
     plt.figure(figsize=(10, 6))
@@ -121,19 +92,35 @@ def generate_custom_charts():
     plt.ylabel("Y (Norte)")
     plt.legend(title="Ano")
     plt.grid(True)
-    map_xy_file = os.path.join(static_temp_folder, 'map_xy.png')
+    map_xy_file = os.path.join(temp_folder, 'map_xy.png')
     plt.savefig(map_xy_file)
     plt.close()
-    plot_files['map_xy'] = 'temp/map_xy.png'
 
     return render_template(
         'collar.html',
         column_names=df.columns.tolist(),
-        plot_files=plot_files
+        plot_files=True
+
     )
 
 @collar_routes.route('/download_plot/<filename>', methods=['GET'])
 @login_required
 def download_plot(filename):
-    static_temp_folder = os.path.join('static', 'temp')
-    return send_from_directory(static_temp_folder, filename, as_attachment=True)
+    temp_folder = get_project_folder('temp')  # Ajustar para a pasta temporária
+    return send_from_directory(temp_folder, filename, as_attachment=True)
+
+@collar_routes.route('/add_plot_to_collar/<image_name>', methods=['GET'])
+@login_required
+def add_plot_to_collar(image_name):
+    temp_folder = get_project_folder('temp')  # Ajustar para a pasta temporária
+    collar_file = os.path.join(temp_folder, 'collar.html')
+    image_path = os.path.join(temp_folder, image_name)
+
+    if os.path.exists(image_path):
+        with open(collar_file, "a") as file:
+            formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+            file.write(f'<p>{formatted_time} - Gráfico adicionado:</p>')
+            file.write(f'<img src="{image_path}" alt="{image_name}" style="width:100%; max-width:600px;"/>')
+        return jsonify({"status": "success", "message": f"Imagem {image_name} adicionada ao arquivo collar.html"}), 200
+
+    return jsonify({"status": "error", "message": f"Imagem {image_name} não encontrada"}), 400

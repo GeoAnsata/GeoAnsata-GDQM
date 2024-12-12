@@ -70,7 +70,7 @@
         <!-- Bar Chart -->
         <div>
             <h4>Gráfico de Barra: Furos a -90 Graus vs Outros Ângulos</h4>
-            <img src="{{ url_for('static', filename=bar_chart_path) }}" class="img-fluid" alt="Dip Comparison Chart">
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='dip_comparison.png') }}" class="img-fluid" alt="Dip Comparison Chart">
             <a href="{{ url_for('survey_routes.download_plot', filename='dip_comparison.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
             <button class="btn btn-secondary mt-2 add-to-survey" data-image="dip_comparison.png">Adicionar ao Survey</button>
         </div>
@@ -102,7 +102,7 @@
         <!-- Scatter Plot -->
         <div class="mt-5">
             <h4>Dispersão: Comprimento dos Trechos Analisados</h4>
-            <img src="{{ url_for('static', filename=scatter_chart_path) }}" class="img-fluid" alt="Segment Length Scatter Plot">
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='segment_length_scatter.png') }}" class="img-fluid" alt="Segment Length Scatter Plot">
             <a href="{{ url_for('survey_routes.download_plot', filename='segment_length_scatter.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
             <button class="btn btn-secondary mt-2 add-to-survey" data-image="segment_length_scatter.png">Adicionar ao Survey</button>
         </div>

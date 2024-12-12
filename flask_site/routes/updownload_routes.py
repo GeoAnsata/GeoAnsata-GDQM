@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import pandas as pd
-from flask import Blueprint,session, redirect, request,url_for, render_template,send_file
+from flask import Blueprint,session, redirect, request,url_for, render_template,send_file, send_from_directory
 from utils.auth_utils import login_required
 from utils.project_utils import get_project_folder
 
@@ -87,3 +87,9 @@ def download_file(file_name):
 
     elif file_path.endswith('.csv'):
         return send_file(file_path, as_attachment=True, download_name=file_name, mimetype='text/csv')
+
+
+@updownload_routes.route('/temp_images/<filename>')
+def serve_temp_image(filename):
+    temp_folder = get_project_folder('temp')
+    return send_from_directory(temp_folder, filename)

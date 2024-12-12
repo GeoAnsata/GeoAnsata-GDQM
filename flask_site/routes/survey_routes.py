@@ -43,100 +43,13 @@ def export_survey_pdf():
     # Return the generated PDF
     return send_file(pdf_path, as_attachment=True)
 
-@survey_routes.route('/survey', methods=['GET','POST'])
-@login_required
-def survey():
-    temp_folder = get_project_folder('temp')
-    survey_file = os.path.join(temp_folder, 'survey.html')
-    if not os.path.exists(survey_file):
-        with open(survey_file, 'w') as f:
-            f.write("<h1>Análise Survey</h1>\n")
-    static_temp_folder = os.path.join('static', 'temp')  # Path for temporary files
-    os.makedirs(static_temp_folder, exist_ok=True)
-    
-    df = load_df(get_project_folder('temp'))  # Load data for analysis
-    column_names = df.columns.tolist() if df is not None else []
-
-    if request.method == 'POST':
-        # Retrieve user-defined columns
-        dip_column = request.form.get('dip_column')
-        max_depth_column = request.form.get('max_depth_column')
-        initial_depth_column = request.form.get('initial_depth_column')
-        hole_id_column = request.form.get('hole_id_column')
-
-        # Validate column selection
-        if not all([dip_column, max_depth_column, initial_depth_column, hole_id_column]):
-            return jsonify({"error": "Selecione todas as colunas necessárias para a análise."}), 400
-
-        # Ensure columns are numeric where needed
-        df[max_depth_column] = pd.to_numeric(df[max_depth_column], errors='coerce')
-        df[initial_depth_column] = pd.to_numeric(df[initial_depth_column], errors='coerce')
-        df[dip_column] = pd.to_numeric(df[dip_column], errors='coerce')
-
-        # Calculate Segment Length
-        df['Segment Length'] = df[max_depth_column] - df[initial_depth_column]
-
-        # Bar Chart: 90 Degrees vs. Others
-        is_90_deg = df[df[dip_column] == -90].shape[0]
-        not_90_deg = df[df[dip_column] != -90].shape[0]
-
-        plt.figure(figsize=(10, 6))
-        plt.bar(['-90 Degrees', 'Other'], [is_90_deg, not_90_deg], color=['green', 'blue'])
-        plt.title("Furos com -90 Graus vs. Outros Ângulos de Perfuração")
-        plt.ylabel("Número de furos")
-        bar_chart_path = os.path.join(static_temp_folder, 'dip_comparison.png')
-        plt.savefig(bar_chart_path)
-        plt.close()
-
-        # Analysis of Holes > 100m
-        deep_holes = df[df[max_depth_column] > 100]
-        total_deep_holes = deep_holes.shape[0]
-        avg_depth = deep_holes[max_depth_column].mean()
-        avg_segment_length = deep_holes['Segment Length'].mean()
-        std_segment_length = deep_holes['Segment Length'].std()
-        dip_distribution = deep_holes[dip_column].value_counts().to_dict()
-
-        # Scatter Plot: Hole ID vs. Segment Length
-        plt.figure(figsize=(10, 6))
-        plt.scatter(df[hole_id_column], df['Segment Length'], alpha=0.7, c='orange')
-        plt.title("Comprimento de Segmento dos Furos")
-        plt.xlabel("ID do Furo")
-        plt.ylabel("Comprimento do Segmento (metros)")
-        scatter_chart_path = os.path.join(static_temp_folder, 'segment_length_scatter.png')
-        plt.savefig(scatter_chart_path)
-        plt.close()
-
-        # Render survey page with results
-        return render_template(
-            'survey.html',
-            column_names=column_names,
-            bar_chart_path='temp/dip_comparison.png',
-            scatter_chart_path='temp/segment_length_scatter.png',
-            deep_hole_analysis={
-                'total_deep_holes': total_deep_holes,
-                'avg_depth': avg_depth,
-                'avg_segment_length': avg_segment_length,
-                'std_segment_length': std_segment_length,
-                'dip_distribution': dip_distribution
-            },
-            selected_columns={
-                'dip_column': dip_column,
-                'max_depth_column': max_depth_column,
-                'initial_depth_column': initial_depth_column,
-                'hole_id_column': hole_id_column
-            }
-        )
-
-    # Render initial page without results
-    return render_template('survey.html', column_names=column_names, bar_chart_path=None, scatter_chart_path=None, deep_hole_analysis=None)
 
 @survey_routes.route('/add_plot_to_survey/<image_name>', methods=['GET'])
 @login_required
 def add_plot_to_survey(image_name):
     temp_folder = get_project_folder('temp')
     survey_file = os.path.join(temp_folder, 'survey.html')
-    static_temp_folder = os.path.join('static', 'temp')
-    image_path = os.path.join(static_temp_folder, image_name)
+    image_path = os.path.join(temp_folder, image_name)
 
     # Check if the image exists
     if os.path.exists(image_path):
