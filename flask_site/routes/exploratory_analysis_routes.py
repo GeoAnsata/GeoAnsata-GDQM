@@ -37,7 +37,14 @@ def criar_tabela_continuo_route():
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
     session['table_html']=table_html
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+    # Verifique se deve usar o template base_analysis
+    use_base_template = request.args.get('use_base_template', 'false').lower() == 'true'
+
+    # Escolha o template
+    template_to_render = 'base_analysis.html' if use_base_template else 'exploratory_analysis.html'
+
+    return render_template(template_to_render, uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @exploratory_analysis_routes.route('/data_dict', methods=['GET'])
 @login_required
@@ -62,7 +69,14 @@ def criar_data_dict_route():
     table_html = table_html.replace('<thead>', '<thead class="thead-light">')
     table_html = table_html.replace('<tbody>', '<tbody class="table-body">')
     session['table_html']=table_html
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+    # Verifique se deve usar o template base_analysis
+    use_base_template = request.args.get('use_base_template', 'false').lower() == 'true'
+
+    # Escolha o template
+    template_to_render = 'base_analysis.html' if use_base_template else 'exploratory_analysis.html'
+
+    return render_template(template_to_render, uploaded_files=session['sheet_names'], column_names=column_names, table=table_html,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @exploratory_analysis_routes.route('/download_csv', methods=['GET'])
 @login_required
@@ -109,7 +123,14 @@ def completude_graph():
     session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
-    return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+
+    # Verifique se deve usar o template base_analysis
+    use_base_template = request.args.get('use_base_template', 'false').lower() == 'true'
+
+    # Escolha o template
+    template_to_render = 'base_analysis.html' if use_base_template else 'exploratory_analysis.html'
+
+    return render_template(template_to_render, uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @exploratory_analysis_routes.route('/plot_graph', methods=['POST'])
 @login_required
@@ -176,7 +197,7 @@ def plot_graph():
     session['image_filename'] = image_filename
     with open(image_filename, 'wb') as f:
         f.write(img.getvalue())
-
+    
     return render_template('exploratory_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None, image=img_base64, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @exploratory_analysis_routes.route('/download_plot', methods=['GET'])

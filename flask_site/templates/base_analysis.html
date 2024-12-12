@@ -1,10 +1,180 @@
-{% extends "base.html" %}
-
-{% block title %}Análise Preliminar{% endblock %}
-
-{% block content %}
-<div class="container mt-5">
-    <h2>Análise Preliminar</h2>
-    <p>Conteúdo em desenvolvimento.</p>
-</div>
-{% endblock %}
+{% extends "base.html" %} 
+{% block title %}Análise Preeliminar{% endblock %}
+ {%block content %}
+    <div class="container mt-5">
+      <h2>Análise Preeliminar</h2>
+      <form action="/criar_tabela_continuo"
+        method="GET"
+        class="mt-3"
+        id="colunaForm_cont"
+      >
+      <input type="hidden" name="use_base_template" value="true" />
+        <div class="form-group">
+          <label>Selecione as colunas:</label><br>
+    
+          <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="select_all_cont" />
+              <label class="form-check-label" for="select_all_cont">Selecionar Todas</label>
+          </div>
+          {% for coluna in column_names %}
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input data-cont-checkbox"
+              type="checkbox"
+              name="colunas"
+              value="{{ coluna }}"
+              id="cont_{{ coluna }}"
+            />
+            <label class="form-check-label" for="cont_{{ coluna }}"
+              >{{ coluna }}</label
+            >
+          </div>
+    
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Gerar Tabela para Valores Numéricos</button>
+      </form>
+    
+      <form action="/data_dict" method="GET" class="mt-3" id="colunaForm_dict">
+        <input type="hidden" name="use_base_template" value="true" />
+        <div class="form-group">
+          <label>Selecione as colunas:</label><br>
+    
+          <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="select_all" />
+              <label class="form-check-label" for="select_all">Selecionar Todas</label>
+          </div>
+          {% for coluna in column_names %}
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input data-dict-checkbox"
+              type="checkbox"
+              name="colunas"
+              value="{{ coluna }}"
+              id="dict_{{ coluna }}"
+            />
+            <label class="form-check-label" for="dict_{{ coluna }}"
+              >{{ coluna }}</label
+            >
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">
+          Gerar Dicionário de Dados
+        </button>
+      </form>
+    
+      <form action="/completude_graph" method="GET" class="mt-3" id="colunaForm_dict">
+        <input type="hidden" name="use_base_template" value="true" />
+        <div class="form-group">
+          <label>Selecione as colunas:</label><br>
+    
+          <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="select_all_completude" />
+              <label class="form-check-label" for="select_all_completude">Selecionar Todas</label>
+          </div>
+          {% for coluna in column_names %}
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input completude-checkbox"
+              type="checkbox"
+              name="colunas"
+              value="{{ coluna }}"
+              id="completude_{{ coluna }}"
+            />
+            <label class="form-check-label" for="completude_{{ coluna }}"
+              >{{ coluna }}</label
+            >
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">
+          Gerar gráfico de completude
+        </button>
+      </form>
+    
+      {% if table %}
+      <div class="mt-5">
+        <h2>Tabela:</h2>
+        <div class="table-responsive">{{ table | safe }}</div>
+        <a href="#" class="btn btn-success mt-3" id="downloadLink">Download CSV</a>
+        <button class="btn btn-secondary mt-3" id="addTableToHistoryButton">Adicionar Tabela a Histórico</button>
+      </div>
+      {% endif %}
+      {% if image %}
+      <h2>Gráfico Gerado:</h2>
+      <img src="data:image/png;base64,{{ image }}" alt="Plot Image" class="img-fluid mt-3" />
+      <a href="{{ url_for('exploratory_analysis_routes.download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Gráfico</a>
+      <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Adicionar Gráfico a Histórico</button>
+    
+      {% endif %}
+      {% include 'includes/plothistorymodal.html' %}
+    </div>
+    <br>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          // Função para o botão de adicionar plot ao histórico
+          const addPlotButton = document.getElementById("addPlotToHistoryButton");
+          if (addPlotButton) {
+              addPlotButton.addEventListener("click", function (event) {
+                  event.preventDefault();
+                  
+                  fetch("/add_plot_to_history")
+                      .then(response => response.json())
+                      .then(data => {
+                          const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                          new bootstrap.Modal(document.getElementById(modalId)).show();
+                      })
+                      .catch(error => {
+                          new bootstrap.Modal(document.getElementById('errorModal')).show();
+                          console.error("Error:", error);
+                      });
+              });
+          }
+      
+          // Função para o botão de adicionar gráfico ao histórico
+          const addTableButton = document.getElementById("addTableToHistoryButton");
+          if (addTableButton) {
+              addTableButton.addEventListener("click", function (event) {
+                  event.preventDefault();
+                  
+                  fetch("/add_table_to_history")
+                      .then(response => response.json())
+                      .then(data => {
+                          const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                          new bootstrap.Modal(document.getElementById(modalId)).show();
+                      })
+                      .catch(error => {
+                          new bootstrap.Modal(document.getElementById('errorModal')).show();
+                          console.error("Error:", error);
+                      });
+              });
+          }
+      
+          // Função para o botão "Selecionar Todas"
+          const selectAllCheckbox = document.getElementById('select_all');
+          if (selectAllCheckbox) {
+              selectAllCheckbox.addEventListener('change', function() {
+                  const checkboxes = document.querySelectorAll('.data-dict-checkbox');
+                  checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
+              });
+          }
+    
+          const selectAllCheckboxCont = document.getElementById('select_all_cont');
+          if (selectAllCheckboxCont) {
+              selectAllCheckboxCont.addEventListener('change', function() {
+                  const checkboxes = document.querySelectorAll('.data-cont-checkbox');
+                  checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckboxCont.checked);
+              });
+          }
+    
+          const selectAllCheckboxCompletude = document.getElementById('select_all_completude');
+          if (selectAllCheckboxCompletude) {
+              selectAllCheckboxCompletude.addEventListener('change', function() {
+                  const checkboxes = document.querySelectorAll('.completude-checkbox');
+                  checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckboxCompletude.checked);
+              });
+          }
+      });
+      </script>
+    {% endblock %}

@@ -183,8 +183,13 @@ def recommended_graphs():
 
 @pages_routes.route('/base_analysis')
 @login_required
-def analysis_preliminary():
-    return render_template('base_analysis.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+def base_analysis():
+    temp_folder = get_project_folder('temp')
+    df = load_df(temp_folder)
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+    return render_template('base_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @pages_routes.route('/collar')
 @login_required
