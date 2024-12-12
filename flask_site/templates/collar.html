@@ -1,10 +1,113 @@
 {% extends "base.html" %}
-
-{% block title %}Collar{% endblock %}
-
+{% block title %}Análise Collar{% endblock %}
 {% block content %}
 <div class="container mt-5">
-    <h2>Collar</h2>
-    <p>Conteúdo em desenvolvimento.</p>
-</div>
+    <h2>Análise Collar</h2>
+
+    <a href="{{ url_for('collar_routes.export_collar_pdf') }}" class="btn btn-primary" id="generateCollarPdf">Baixar Análise</a>
+
+    <div class="mt-5">
+        <h3>Criação de Gráficos</h3>
+        <p>
+            Selecione as colunas relevantes para criar os seguintes gráficos:
+            <ul>
+                <li><strong>Gráficos de Barra</strong>: Número de furos por ano e número de metros por ano.</li>
+                <li><strong>Mapa XZ</strong>: Localizações dos furos divididas por ano de sondagem.</li>
+            </ul>
+        </p>
+
+        <form id="chart-options-form" method="POST" action="{{ url_for('collar_routes.generate_custom_charts') }}">
+            <div class="form-group">
+                <label for="year_column">Coluna de Ano:</label>
+                <select id="year_column" name="year_column" class="form-control">
+                    <option value="">Escolha uma coluna</option>
+                    {% for coluna in column_names %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="depth_column">Coluna de Profundidade (Metros):</label>
+                <select id="depth_column" name="depth_column" class="form-control">
+                    <option value="">Escolha uma coluna</option>
+                    {% for coluna in column_names %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="x_column">Coluna X:</label>
+                <select id="x_column" name="x_column" class="form-control">
+                    <option value="">Escolha uma coluna</option>
+                    {% for coluna in column_names %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="y_column">Coluna Y:</label>
+                <select id="y_column" name="y_column" class="form-control">
+                    <option value="">Escolha uma coluna</option>
+                    {% for coluna in column_names %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Gerar Gráficos</button>
+        </form>
+    </div>
+
+    {% if plot_files %}
+    <div class="mt-5">
+        <h3>Gráficos Gerados</h3>
+        <div>
+            <h4>Número de Furos por Ano</h4>
+            <img src="{{ url_for('static', filename=plot_files['holes_per_year']) }}" class="img-fluid" alt="Número de Furos por Ano">
+            <a href="{{ url_for('collar_routes.download_plot', filename='holes_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="holes_per_year.png">Adicionar ao Arquivo</button>
+        </div>
+        <div>
+            <h4>Número de Metros por Ano</h4>
+            <img src="{{ url_for('static', filename=plot_files['meters_per_year']) }}" class="img-fluid" alt="Número de Metros por Ano">
+            <a href="{{ url_for('collar_routes.download_plot', filename='meters_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="meters_per_year.png">Adicionar ao Arquivo</button>
+        </div>
+        <div>
+            <h4>Mapa XY das Localizações dos Furos</h4>
+            <img src="{{ url_for('static', filename=plot_files['map_xy']) }}" class="img-fluid" alt="Mapa XY das Localizações">
+            <a href="{{ url_for('collar_routes.download_plot', filename='map_xy.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="map_xy.png">Adicionar ao Arquivo</button>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% include 'includes/plothistorymodal.html' %}
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const addImageButtons = document.querySelectorAll(".add-image-to-collar");
+    
+            addImageButtons.forEach(button => {
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    const imageName = this.getAttribute("data-image");
+    
+                    fetch(`/add_plot_to_collar/${imageName}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const modalId = data.status === "success" ? 'successModal' : 'errorModal';
+                            new bootstrap.Modal(document.getElementById(modalId)).show();
+                        })
+                        .catch(error => {
+                            new bootstrap.Modal(document.getElementById('errorModal')).show();
+                            console.error("Erro ao adicionar ao arquivo:", error);
+                        });
+                });
+            });
+        });
+    </script>
 {% endblock %}

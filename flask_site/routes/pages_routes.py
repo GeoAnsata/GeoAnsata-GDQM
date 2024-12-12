@@ -196,10 +196,21 @@ def base_analysis():
         column_names = df.columns.tolist()
     return render_template('base_analysis.html', uploaded_files=session['sheet_names'], column_names=column_names, table=None,image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
+
 @pages_routes.route('/collar')
 @login_required
 def collar():
-    return render_template('collar.html', uploaded_files=session['sheet_names'], selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
+    temp_folder = get_project_folder('temp')
+    collar_file = os.path.join(temp_folder, 'collar.html')
+    if not os.path.exists(collar_file):
+        with open(collar_file, 'w') as f:
+            f.write("<h1>Análise Collar</h1>\n")
+
+    df = load_df(temp_folder)
+    column_names=None
+    if(df is not None):
+        column_names = df.columns.tolist()
+    return render_template('collar.html', uploaded_files=session['sheet_names'], column_names=column_names, image=None, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @pages_routes.route('/survey')
 @login_required
