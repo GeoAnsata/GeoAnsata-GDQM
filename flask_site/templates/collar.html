@@ -13,7 +13,7 @@
                 <li><strong>Mapa XZ</strong>: Localizações dos furos divididas por ano de sondagem.</li>
             </ul>
         </p>
-
+        {% if column_names %}
         <form id="chart-options-form" method="POST" action="{{ url_for('collar_routes.generate_custom_charts') }}">
             <div class="form-group">
                 <label for="year_column">Coluna de Ano:</label>
@@ -58,30 +58,20 @@
             <button type="submit" class="btn btn-primary">Gerar Gráficos</button>
         </form>
     </div>
-
+    {% endif %}
     {% if plot_files %}
     <div class="mt-5">
         <h3>Gráficos Gerados</h3>
+        {% for key, file_name in plot_files.items() %}
         <div>
-            <h4>Número de Furos por Ano</h4>
-            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='holes_per_year.png') }}" class="img-fluid" alt="Número de Furos por Ano">
-            <a href="{{ url_for('collar_routes.download_plot', filename='holes_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
-            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="holes_per_year.png">Adicionar ao Arquivo</button>
+            <h4>{{ key.replace('_', ' ').capitalize() }}</h4>
+            <img src="{{ url_for('updownload_routes.serve_temp_image', filename=file_name) }}" class="img-fluid" alt="{{ key }}">
+            <a href="{{ url_for('collar_routes.download_plot', filename=file_name) }}" class="btn btn-primary mt-2">Baixar Imagem</a>
+            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="{{ file_name }}">Adicionar ao Arquivo</button>
         </div>
-        <div>
-            <h4>Número de Metros por Ano</h4>
-            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='meters_per_year.png') }}" class="img-fluid" alt="Número de Metros por Ano">
-            <a href="{{ url_for('collar_routes.download_plot', filename='meters_per_year.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
-            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="meters_per_year.png">Adicionar ao Arquivo</button>
-        </div>
-        <div>
-            <h4>Mapa XY das Localizações dos Furos</h4>
-            <img src="{{ url_for('updownload_routes.serve_temp_image', filename='map_xy.png') }}" class="img-fluid" alt="Mapa XY das Localizações">
-            <a href="{{ url_for('collar_routes.download_plot', filename='map_xy.png') }}" class="btn btn-primary mt-2">Baixar Imagem</a>
-            <button class="btn btn-secondary mt-2 add-image-to-collar" data-image="map_xy.png">Adicionar ao Arquivo</button>
-        </div>
+        {% endfor %}
     </div>
-    {% endif %}    
+    {% endif %}
     
     {% include 'includes/plothistorymodal.html' %}
     

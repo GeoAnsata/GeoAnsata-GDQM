@@ -8,6 +8,8 @@
         gere tabelas e gráficos para as colunas que julgar importantes. Isso ajudará na análise 
         detalhada dos dados. Adicione as tabelas e gráficos que desejar ao pdf clicando no botão abaixo delas.
     </p>
+
+    {% if column_names %}
       <a href="{{ url_for('base_analysis_routes.export_base_analysis_pdf') }}" class="btn btn-primary" id="generateBaseAnalysisPdf">Baixar Análise</a>
 
       <form action="/criar_tabela_continuo"
@@ -114,6 +116,7 @@
       <a href="{{ url_for('exploratory_analysis_routes.download_plot') }}" class="btn btn-success mt-3" id="downloadLink">Download Gráfico</a>
       <button class="btn btn-secondary mt-3" id="addPlotToHistoryButton">Adicionar Gráfico a Pdf</button>
     
+      {% endif %}
       {% endif %}
       {% include 'includes/plothistorymodal.html' %}
     </div>

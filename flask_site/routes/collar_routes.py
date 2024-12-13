@@ -1,5 +1,5 @@
 import os
-
+import uuid
 from flask import Blueprint,session,send_file,jsonify,request, render_template, send_from_directory
 from io import BytesIO
 from datetime import datetime
@@ -46,12 +46,12 @@ def export_collar_pdf():
 @collar_routes.route('/generate_custom_charts', methods=['POST'])
 @login_required
 def generate_custom_charts():
-    temp_folder = get_project_folder('temp')  # Usar pasta temporária
+    temp_folder = get_project_folder('temp')
     os.makedirs(temp_folder, exist_ok=True)
 
     df = load_df(temp_folder)
 
-    # Columns selected by the user
+    # Colunas selecionadas pelo usuário
     year_column = request.form.get('year_column')
     depth_column = request.form.get('depth_column')
     x_column = request.form.get('x_column')
@@ -60,30 +60,35 @@ def generate_custom_charts():
     if not all([year_column, depth_column, x_column, y_column]):
         return jsonify({"error": "Selecione todas as colunas necessárias."}), 400
 
+    plot_files = {}
 
-    # Plot 1: Number of holes per year
+    # Gerar Gráfico 1: Número de Furos por Ano
     plt.figure(figsize=(10, 6))
     df[year_column].value_counts().sort_index().plot(kind='bar')
     plt.title("Número de Furos por Ano")
     plt.xlabel("Ano")
     plt.ylabel("Número de Furos")
     plt.grid(True)
-    holes_per_year_file = os.path.join(temp_folder, 'holes_per_year.png')
-    plt.savefig(holes_per_year_file)
+    unique_id = uuid.uuid4().hex
+    holes_per_year_file = f"holes_per_year_{unique_id}.png"
+    plt.savefig(os.path.join(temp_folder, holes_per_year_file))
     plt.close()
+    plot_files['holes_per_year'] = holes_per_year_file
 
-    # Plot 2: Number of meters per year
+    # Gerar Gráfico 2: Número de Metros por Ano
     plt.figure(figsize=(10, 6))
     df.groupby(year_column)[depth_column].sum().sort_index().plot(kind='bar')
     plt.title("Número de Metros por Ano")
     plt.xlabel("Ano")
     plt.ylabel("Metros")
     plt.grid(True)
-    meters_per_year_file = os.path.join(temp_folder, 'meters_per_year.png')
-    plt.savefig(meters_per_year_file)
+    unique_id = uuid.uuid4().hex
+    meters_per_year_file = f"meters_per_year_{unique_id}.png"
+    plt.savefig(os.path.join(temp_folder, meters_per_year_file))
     plt.close()
+    plot_files['meters_per_year'] = meters_per_year_file
 
-    # Plot 3: XY map divided by year
+    # Gerar Gráfico 3: Mapa XY
     plt.figure(figsize=(10, 6))
     for year, group in df.groupby(year_column):
         plt.scatter(group[x_column], group[y_column], label=str(year), alpha=0.7)
@@ -92,16 +97,20 @@ def generate_custom_charts():
     plt.ylabel("Y (Norte)")
     plt.legend(title="Ano")
     plt.grid(True)
-    map_xy_file = os.path.join(temp_folder, 'map_xy.png')
-    plt.savefig(map_xy_file)
+    unique_id = uuid.uuid4().hex
+    map_xy_file = f"map_xy_{unique_id}.png"
+    plt.savefig(os.path.join(temp_folder, map_xy_file))
     plt.close()
+    plot_files['map_xy'] = map_xy_file
 
-    return render_template(
-        'collar.html',
-        column_names=df.columns.tolist(),
-        plot_files=True
+    # Atualizar a sessão do usuário com os caminhos gerados
+    if 'generated_images' not in session:
+        session['generated_images'] = []
+    session['generated_images'].extend(plot_files.values())
+    session.modified = True
 
-    )
+    return render_template('collar.html', column_names=df.columns.tolist(), plot_files=plot_files)
+
 
 @collar_routes.route('/download_plot/<filename>', methods=['GET'])
 @login_required

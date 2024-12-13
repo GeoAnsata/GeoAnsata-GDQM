@@ -9,6 +9,7 @@
         Use o formulário abaixo para selecionar as colunas relevantes para análise:
     </p>
 
+    {% if column_names %}
     <!-- Form for column selection -->
     <form method="POST" action="/survey" class="mt-4">
         <div class="form-group">
@@ -107,6 +108,7 @@
             <button class="btn btn-secondary mt-2 add-to-survey" data-image="segment_length_scatter.png">Adicionar ao Survey</button>
         </div>
     </div>
+    {% endif %}
     {% endif %}
     {% include 'includes/plothistorymodal.html' %}
 <script>

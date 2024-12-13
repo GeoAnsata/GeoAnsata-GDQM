@@ -3,6 +3,7 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Análise Teores</h2>
+    {% if column_names %}
     <a href="{{ url_for('teores_routes.export_teores_pdf') }}" class="btn btn-primary" id="generateTeoresPdf">Baixar Análise</a>
     <div class="mt-5">
         <h3>Criação de Gráficos</h3>
@@ -41,7 +42,7 @@
         </div>
     </div>
     {% endif %}
-    
+    {% endif %}
     {% include 'includes/plothistorymodal.html' %}
 
     <script>
