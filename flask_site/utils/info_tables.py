@@ -93,11 +93,11 @@ def gerar_resumo_tabela(tabela):
         distribuicao = tabela[coluna].value_counts(dropna=False, normalize=True) * 100
         qtd_distribuicao = tabela[coluna].value_counts(dropna=False)
         
-        distrib_resumo = "\n".join([
+        distrib_resumo = ", ".join([
             f"{valor if pd.notna(valor) else 'NaN'}: {qtd} ({pct:.1f}%)"
             for valor, qtd, pct in zip(distribuicao.index, qtd_distribuicao, distribuicao)
         ]) if tabela[coluna].nunique() <= 10 else "–"
-        
+
         distribuicoes.append(distrib_resumo)
     
     # Criar DataFrame com o resumo

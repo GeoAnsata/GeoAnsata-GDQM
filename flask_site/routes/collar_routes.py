@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import uuid
 from flask import Blueprint,session,send_file,jsonify,request, render_template, send_from_directory
 from io import BytesIO
@@ -60,6 +61,14 @@ def generate_custom_charts():
     if not all([year_column, depth_column, x_column, y_column]):
         return jsonify({"error": "Selecione todas as colunas necessárias."}), 400
 
+    # Verificar e converter a coluna de anos se necessário
+    if df[year_column].dtype == 'object':
+        try:
+            df[year_column] = pd.to_datetime(df[year_column], format='%d/%m/%Y', errors='coerce')
+            df[year_column] = df[year_column].dt.year
+        except Exception as e:
+            return jsonify({"error": f"Erro ao processar a coluna de anos: {str(e)}"}), 400
+
     plot_files = {}
 
     # Gerar Gráfico 1: Número de Furos por Ano
@@ -91,7 +100,7 @@ def generate_custom_charts():
     # Gerar Gráfico 3: Mapa XY
     plt.figure(figsize=(10, 6))
     for year, group in df.groupby(year_column):
-        plt.scatter(group[x_column], group[y_column], label=str(year), alpha=0.7)
+        plt.scatter(group[x_column], group[y_column], label=f"{int(year)}" if isinstance(year, (int, float)) and year.is_integer() else str(year), alpha=0.7)
     plt.title("Mapa XY das Localizações dos Furos")
     plt.xlabel("X (Leste)")
     plt.ylabel("Y (Norte)")
@@ -109,8 +118,19 @@ def generate_custom_charts():
     session['generated_images'].extend(plot_files.values())
     session.modified = True
 
-    return render_template('collar.html', column_names=df.columns.tolist(), plot_files=plot_files)
+    # Número de furos por ano
+    holes_per_year = df[year_column].value_counts().sort_index()
 
+    # Número de metros furados por ano
+    meters_per_year = df.groupby(year_column)[depth_column].sum().sort_index()
+
+    # Printar os resultados no terminal para teste
+    print("Número de furos por ano:")
+    print(holes_per_year)
+    print("\nNúmero de metros furados por ano:")
+    print(meters_per_year)
+
+    return render_template('collar.html', column_names=df.columns.tolist(), plot_files=plot_files)
 
 @collar_routes.route('/download_plot/<filename>', methods=['GET'])
 @login_required

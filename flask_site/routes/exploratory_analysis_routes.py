@@ -1,8 +1,10 @@
 import os
-import base64
 import numpy as np
+import base64
+import textwrap
 import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib.colors import ListedColormap
 matplotlib.use('Agg')
 import seaborn as sns
 
@@ -97,22 +99,34 @@ def completude_graph():
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
     column_names = df.columns.tolist() if df is not None else None
-    #data_dict = criar_data_dict(df[colunas_selecionadas])
 
+    valores_vazios = ["", "NA", "null", "N/A", "undefined","nan"]  # Adicione aqui os valores que você quer tratar como NaN
+    df=df.replace(valores_vazios, np.nan)
     plt.figure(figsize=(10, 6))  # Ajuste o tamanho conforme necessário
-    sns.heatmap(df[colunas_selecionadas].transpose().isnull(), cbar=False, cmap=["purple", "yellow"], linecolor='white')
+    sns.heatmap(
+        df[colunas_selecionadas].transpose().isnull(),
+        cbar=False,
+        cmap=ListedColormap(["purple", "yellow"]),
+        linecolor='white',
+        vmin=0,  # Define o limite inferior como 0
+        vmax=1   # Define o limite superior como 1
+    )
 
     plt.xlabel(f"{df[colunas_selecionadas].shape[0]} linhas")
     plt.ylabel(f"{df[colunas_selecionadas].shape[1]} colunas")
 
-    # Set the y-tick positions at row boundaries (between rows)
-    plt.gca().set_yticks(np.arange(0, df[colunas_selecionadas].shape[1]))  # Gridlines between rows
+    # Ajuste os nomes das colunas para não cortarem
+    ax = plt.gca()
+    yticklabels = df[colunas_selecionadas].columns
 
-    # Set the y-tick labels to column names and shift their positions to the middle
-    plt.gca().set_yticklabels(df[colunas_selecionadas].columns)
+    # Dividir nomes longos em múltiplas linhas
+    wrapped_labels = [
+        "\n".join(textwrap.wrap(label, width=20)) for label in yticklabels
+    ]
+    ax.set_yticklabels(wrapped_labels, fontsize=8, rotation=0)  # Ajuste o tamanho e a rotação conforme necessário
 
-    # Add horizontal gridlines at row boundaries (between rows)
-    plt.grid(axis='y', color='white', linewidth=1, linestyle='-', zorder=0)
+    # Ajuste do layout para evitar cortes
+    plt.tight_layout()
 
     img = BytesIO()
     plt.savefig(img, format='png')

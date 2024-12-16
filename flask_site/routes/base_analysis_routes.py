@@ -47,7 +47,7 @@ def add_table_to_history():
     file_name = session['selected_file']
     sheet_name = session['selected_sheet']
     try:
-        with open(base_analysis_file, "w") as file:
+        with open(base_analysis_file, "a") as file:
             # Log the addition of the plot to the history
             formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             if(sheet_name):
@@ -73,7 +73,7 @@ def add_plot_to_history():
     sheet_name = session['selected_sheet']
     
     if temp_filename and os.path.exists(temp_filename):
-        with open(base_analysis_file, "w") as file:
+        with open(base_analysis_file, "a") as file:
             # Log the addition of the plot to the history
             formatted_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             if(sheet_name):

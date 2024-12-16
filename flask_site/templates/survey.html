@@ -3,13 +3,13 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Análise Survey</h2>
+    {% if column_names %}    
     <a href="{{ url_for('survey_routes.export_survey_pdf') }}" class="btn btn-primary" id="generateSurveyPdf">Baixar Análise</a>
 
     <p>
         Use o formulário abaixo para selecionar as colunas relevantes para análise:
     </p>
 
-    {% if column_names %}
     <!-- Form for column selection -->
     <form method="POST" action="/survey" class="mt-4">
         <div class="form-group">
