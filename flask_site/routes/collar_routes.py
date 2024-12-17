@@ -8,12 +8,18 @@ from utils.auth_utils import login_required
 from utils.project_utils import get_project_folder
 from utils.load_df import load_df
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_hex
 import matplotlib
 matplotlib.use('Agg')
 
 
 collar_routes = Blueprint('collar_routes', __name__)
 
+def assign_colors_to_years(years):
+    unique_years = sorted(set(years))  # Obter os anos únicos ordenados
+    color_map = plt.get_cmap('tab10')  # Usar a paleta tab10
+    year_colors = {year: to_hex(color_map(i % 10)) for i, year in enumerate(unique_years)}
+    return year_colors
 
 from xhtml2pdf import pisa
 @collar_routes.route('/export_collar_pdf', methods=['GET'])
@@ -68,29 +74,56 @@ def generate_custom_charts():
             df[year_column] = df[year_column].dt.year
         except Exception as e:
             return jsonify({"error": f"Erro ao processar a coluna de anos: {str(e)}"}), 400
-
+    df[year_column] = df[year_column].fillna('Sem Ano').astype(str).str.split('.').str[0]
+    year_colors = assign_colors_to_years(df[year_column])
     plot_files = {}
 
-    # Gerar Gráfico 1: Número de Furos por Ano
+    # Gráfico 1: Número de Furos por Ano com valores nas barras
     plt.figure(figsize=(10, 6))
-    df[year_column].value_counts().sort_index().plot(kind='bar')
+    holes_per_year = df[year_column].value_counts().sort_index()
+    colors = [year_colors[year] for year in holes_per_year.index]
+    bars = holes_per_year.plot(kind='bar', color=colors)
+
+    # Adicionar valores sobre as barras
+    for bar in bars.patches:
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,  # Posição X
+            bar.get_height() + 0.5,             # Posição Y
+            f'{int(bar.get_height())}',         # Valor a ser exibido
+            ha='center', va='bottom', fontsize=10
+        )
+
     plt.title("Número de Furos por Ano")
     plt.xlabel("Ano")
     plt.ylabel("Número de Furos")
-    plt.grid(True)
+    plt.grid(False)
+    plt.tight_layout()
     unique_id = uuid.uuid4().hex
     holes_per_year_file = f"holes_per_year_{unique_id}.png"
     plt.savefig(os.path.join(temp_folder, holes_per_year_file))
     plt.close()
     plot_files['holes_per_year'] = holes_per_year_file
 
-    # Gerar Gráfico 2: Número de Metros por Ano
+    # Gráfico 2: Número de Metros por Ano com valores nas barras
     plt.figure(figsize=(10, 6))
-    df.groupby(year_column)[depth_column].sum().sort_index().plot(kind='bar')
+    grouped_depth = df.groupby(year_column)[depth_column].sum().sort_index()
+    colors = [year_colors[year] for year in grouped_depth.index]
+    bars = grouped_depth.plot(kind='bar', color=colors)
+
+    # Adicionar valores sobre as barras
+    for bar in bars.patches:
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,  # Posição X
+            bar.get_height() + 0.5,             # Posição Y
+            f'{int(bar.get_height())}',         # Valor a ser exibido
+            ha='center', va='bottom', fontsize=10
+        )
+
     plt.title("Número de Metros por Ano")
     plt.xlabel("Ano")
     plt.ylabel("Metros")
-    plt.grid(True)
+    plt.tight_layout()
+    plt.grid(False)
     unique_id = uuid.uuid4().hex
     meters_per_year_file = f"meters_per_year_{unique_id}.png"
     plt.savefig(os.path.join(temp_folder, meters_per_year_file))
@@ -100,12 +133,13 @@ def generate_custom_charts():
     # Gerar Gráfico 3: Mapa XY
     plt.figure(figsize=(10, 6))
     for year, group in df.groupby(year_column):
-        plt.scatter(group[x_column], group[y_column], label=f"{int(year)}" if isinstance(year, (int, float)) and year.is_integer() else str(year), alpha=0.7)
+        plt.scatter(group[x_column], group[y_column], label=str(year), color=year_colors[year], alpha=0.7)
     plt.title("Mapa XY das Localizações dos Furos")
     plt.xlabel("X (Leste)")
     plt.ylabel("Y (Norte)")
     plt.legend(title="Ano")
-    plt.grid(True)
+    plt.tight_layout()
+    plt.grid(False)
     unique_id = uuid.uuid4().hex
     map_xy_file = f"map_xy_{unique_id}.png"
     plt.savefig(os.path.join(temp_folder, map_xy_file))
@@ -130,7 +164,7 @@ def generate_custom_charts():
     print("\nNúmero de metros furados por ano:")
     print(meters_per_year)
 
-    return render_template('collar.html', column_names=df.columns.tolist(), plot_files=plot_files)
+    return render_template('collar.html', uploaded_files=session['sheet_names'], column_names=df.columns.tolist(), plot_files=plot_files, selected_file=session["selected_file"], selected_sheet=session["selected_sheet"])
 
 @collar_routes.route('/download_plot/<filename>', methods=['GET'])
 @login_required

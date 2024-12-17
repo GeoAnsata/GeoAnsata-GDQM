@@ -1,12 +1,9 @@
 import os
-import pandas as pd
 from io import BytesIO
-from flask import Blueprint,jsonify,request, render_template, send_file, send_from_directory
+from flask import Blueprint,jsonify,request, send_file, send_from_directory
 from datetime import datetime
 from utils.auth_utils import login_required
 from utils.project_utils import get_project_folder
-from utils.load_df import load_df
-import matplotlib.pyplot as plt
 import matplotlib
 
 matplotlib.use('Agg')

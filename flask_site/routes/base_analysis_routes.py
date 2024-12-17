@@ -60,8 +60,10 @@ def add_table_to_history():
 
         # Return success response
         return jsonify({"status": "success"}), 200
-    except:
-        return jsonify({"status": "error", "message": "Não há gráfico para adicionar a histórico"}), 400
+    except Exception as e:
+        print(f"Erro: {str(e)}")  # Log no terminal
+        return jsonify({"status": "error", "message": f"Erro ao adicionar tabela: {str(e)}"}), 400
+
 
 @base_analysis_routes.route('/add_plot_to_base_analysis', methods=['GET'])
 @login_required

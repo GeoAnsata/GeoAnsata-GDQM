@@ -19,6 +19,14 @@ from utils.info_tables import gerar_estatisticas_tabela,gerar_resumo_tabela
 exploratory_analysis_routes = Blueprint('exploratory_analysis_routes', __name__)
 
 
+
+def adicionar_space(df):
+    if df.shape[1] > 0:  # Garante que há ao menos uma coluna
+        df.iloc[:, 0] = df.iloc[:, 0].apply(
+            lambda x: x.replace('.', '. ') if isinstance(x, str) else x
+        )
+    return df
+
 @exploratory_analysis_routes.route('/criar_tabela_continuo', methods=['GET'])
 @login_required
 def criar_tabela_continuo_route():
@@ -26,6 +34,7 @@ def criar_tabela_continuo_route():
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
     tabela_continua = gerar_estatisticas_tabela(df[colunas_selecionadas])
+    tabela_continua = adicionar_space(tabela_continua)
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()
@@ -56,8 +65,8 @@ def criar_data_dict_route():
     temp_folder = get_project_folder('temp')
     colunas_selecionadas = request.args.getlist('colunas')
     df = load_df(temp_folder)
-    #data_dict = criar_data_dict(df[colunas_selecionadas])
     data_dict = gerar_resumo_tabela(df[colunas_selecionadas])
+    data_dict = adicionar_space(data_dict)
     column_names=None
     if(df is not None):
         column_names = df.columns.tolist()

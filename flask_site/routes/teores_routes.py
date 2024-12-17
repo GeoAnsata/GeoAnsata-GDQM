@@ -1,6 +1,5 @@
 import os
-
-from flask import Blueprint,session,send_file,jsonify,request, render_template, send_from_directory
+from flask import Blueprint,send_file,jsonify,request, render_template, send_from_directory
 from io import BytesIO
 from datetime import datetime
 from utils.auth_utils import login_required
