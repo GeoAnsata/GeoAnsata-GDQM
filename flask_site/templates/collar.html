@@ -14,7 +14,7 @@
             </ul>
         </p>
         {% if column_names %}
-        <form id="chart-options-form" method="POST" action="{{ url_for('collar_routes.generate_custom_charts') }}">
+        <form id="chart-options-form" method="POST" action="{{ url_for('collar_routes.generate_custom_charts') }}" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="year_column">Coluna de Ano:</label>
                 <select id="year_column" name="year_column" class="form-control">
@@ -53,6 +53,11 @@
                         <option value="{{ coluna }}">{{ coluna }}</option>
                     {% endfor %}
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label for="kml_file">Arquivo KML (opcional):</label>
+                <input type="file" id="kml_file" name="kml_file" class="form-control" accept=".kml">
             </div>
 
             <button type="submit" class="btn btn-primary">Gerar Gráficos</button>

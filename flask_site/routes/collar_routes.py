@@ -50,6 +50,9 @@ def export_collar_pdf():
     return send_file(pdf_path, as_attachment=True)
 
 
+import geopandas as gpd, fiona
+from shapely.geometry import Point
+
 @collar_routes.route('/generate_custom_charts', methods=['POST'])
 @login_required
 def generate_custom_charts():
@@ -63,9 +66,11 @@ def generate_custom_charts():
     depth_column = request.form.get('depth_column')
     x_column = request.form.get('x_column')
     y_column = request.form.get('y_column')
+    kml_file = request.files.get('kml_file')
 
     if not all([year_column, depth_column, x_column, y_column]):
         return jsonify({"error": "Selecione todas as colunas necessárias."}), 400
+
 
     # Verificar e converter a coluna de anos se necessário
     if df[year_column].dtype == 'object':
@@ -75,6 +80,22 @@ def generate_custom_charts():
         except Exception as e:
             return jsonify({"error": f"Erro ao processar a coluna de anos: {str(e)}"}), 400
     df[year_column] = df[year_column].fillna('Sem Ano').astype(str).str.split('.').str[0]
+
+    # Carregar o KML se fornecido
+    mapa_base = None
+    if kml_file:
+        kml_path = os.path.join(temp_folder, f"uploaded_{uuid.uuid4().hex}.kml")
+        kml_file.save(kml_path)
+        fiona.drvsupport.supported_drivers['libkml'] = 'rw' # enable KML support which is disabled by default
+        fiona.drvsupport.supported_drivers['LIBKML'] = 'rw' # enable KML support which is disabled 
+        mapa_base = gpd.read_file(kml_path)
+
+        # Reprojetar o mapa base para UTM Zona 23S se necessário
+        if mapa_base.crs != "EPSG:32723":
+            mapa_base = mapa_base.to_crs(epsg=32723)
+
+    # Processar os dados
+    df[year_column] = pd.to_datetime(df[year_column], errors='coerce').dt.year.fillna('Sem Ano').astype(str)
     year_colors = assign_colors_to_years(df[year_column])
     plot_files = {}
 
@@ -130,23 +151,34 @@ def generate_custom_charts():
     plt.close()
     plot_files['meters_per_year'] = meters_per_year_file
 
-    # Gerar Gráfico 3: Mapa XY
+    # Criar GeoDataFrame para os pontos
+    gdf_pontos = gpd.GeoDataFrame(
+        df,
+        geometry=[Point(x, y) for x, y in zip(df[x_column], df[y_column])],
+        crs="EPSG:32723"
+    )
+
+    # Gráfico de Mapa XY com KML (se fornecido)
     plt.figure(figsize=(10, 6))
-    for year, group in df.groupby(year_column):
-        plt.scatter(group[x_column], group[y_column], label=str(year), color=year_colors[year], alpha=0.7)
+    if mapa_base is not None:
+        mapa_base.plot(ax=plt.gca(), color='lightgray', edgecolor='black', alpha=0.5)
+
+    for year, group in gdf_pontos.groupby(year_column):
+        plt.scatter(group.geometry.x, group.geometry.y, label=year, color=year_colors[year], alpha=0.7)
+
     plt.title("Mapa XY das Localizações dos Furos")
     plt.xlabel("X (Leste)")
     plt.ylabel("Y (Norte)")
     plt.legend(title="Ano")
     plt.tight_layout()
     plt.grid(False)
-    unique_id = uuid.uuid4().hex
-    map_xy_file = f"map_xy_{unique_id}.png"
+
+    map_xy_file = f"map_xy_{uuid.uuid4().hex}.png"
     plt.savefig(os.path.join(temp_folder, map_xy_file))
     plt.close()
     plot_files['map_xy'] = map_xy_file
 
-    # Atualizar a sessão do usuário com os caminhos gerados
+# Atualizar a sessão do usuário com os caminhos gerados
     if 'generated_images' not in session:
         session['generated_images'] = []
     session['generated_images'].extend(plot_files.values())
